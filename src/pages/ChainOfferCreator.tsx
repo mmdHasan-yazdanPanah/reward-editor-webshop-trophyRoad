@@ -976,10 +976,13 @@ const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
             onChange={(e) =>
               setValue(
                 `${namePrefix}.options.featuringSkinId` as any,
-                e.target.value,
+                e.target.value ? e.target.value : undefined,
                 { shouldDirty: true }
               )
             }>
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
             {getSkinOptionsForHero(
               options?.featuringHeroId,
               options?.featuringSkinId
