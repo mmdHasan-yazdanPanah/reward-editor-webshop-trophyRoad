@@ -189,6 +189,12 @@ const moneySkuOptions = [
   699900, 999900, 0,
 ];
 
+const preventNumberScroll = (
+  event: React.WheelEvent<HTMLInputElement>
+) => {
+  event.currentTarget.blur();
+};
+
 const getHeroOptions = (heroId?: number) => {
   if (
     heroId === undefined ||
@@ -322,6 +328,7 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             label="Amount"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={(cost as any)?.amount ?? 0}
             onChange={(e) =>
               setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
@@ -402,6 +409,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             label="Amount"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={reward?.amount ?? 0}
             onChange={(e) =>
               setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
@@ -415,15 +423,16 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
       {rewardType === RewardType.Chest && (
         <>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              label="Amount"
-              type="number"
-              fullWidth
-              value={reward?.amount ?? 0}
-              onChange={(e) =>
-                setValue(
-                  `${namePrefix}.amount` as any,
-                  Number(e.target.value),
+          <TextField
+            label="Amount"
+            type="number"
+            fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
+            value={reward?.amount ?? 0}
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.amount` as any,
+                Number(e.target.value),
                   { shouldDirty: true }
                 )
               }
@@ -514,6 +523,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
               label="Card Amount"
               type="number"
               fullWidth
+              inputProps={{ onWheel: preventNumberScroll }}
               value={reward?.cardAmount ?? 0}
               onChange={(e) =>
                 setValue(
@@ -574,6 +584,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
               label="Card Amount"
               type="number"
               fullWidth
+              inputProps={{ onWheel: preventNumberScroll }}
               value={reward?.cardAmount ?? 0}
               onChange={(e) =>
                 setValue(
@@ -642,6 +653,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             label="Amount"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={reward?.amount ?? 0}
             onChange={(e) =>
               setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
@@ -951,7 +963,7 @@ const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
             type="number"
             fullWidth
             value={durationAmount}
-            inputProps={{ min: 0, step: 'any' }}
+            inputProps={{ min: 0, step: 'any', onWheel: preventNumberScroll }}
             helperText={`Stored: ${durationValue} ms • ${durationLabel}`}
             onChange={(e) =>
               setValue(
@@ -983,6 +995,7 @@ const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
             label="Weight"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={
               (useWatch({
                 control,
@@ -1415,6 +1428,7 @@ const GroupCard: React.FC<{ namePrefix: string; index?: number }> = ({
             label="Group Max Select"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={
               (useWatch({
                 control,
@@ -1435,6 +1449,7 @@ const GroupCard: React.FC<{ namePrefix: string; index?: number }> = ({
             label="Group Weight"
             type="number"
             fullWidth
+            inputProps={{ onWheel: preventNumberScroll }}
             value={
               (useWatch({
                 control,
