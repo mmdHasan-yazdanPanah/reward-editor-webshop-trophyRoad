@@ -37,6 +37,7 @@ import {
   RewardType,
   chestType,
 } from '../types/models';
+import { SKINS_BY_HERO } from '../types/skinModels';
 import {
   type ChainBase,
   type ChainOfferItem,
@@ -133,6 +134,31 @@ const parseConditionValue = (input: string, featureName?: FeatureName) => {
   }
 
   return toNumberOrString(trimmed);
+};
+
+const allSkinIds = Array.from(ALL_SKINS);
+
+const getSkinOptionsForHero = (
+  heroId?: number,
+  selectedSkinId?: string
+): string[] => {
+  const heroSkins =
+    heroId !== undefined ? SKINS_BY_HERO[heroId] : undefined;
+  const baseOptions =
+    heroSkins && heroSkins.length > 0 ? heroSkins : allSkinIds;
+  const filteredOptions = baseOptions.filter(
+    (skinId) => !EXCLUSIVE_SKINS.has(skinId)
+  );
+
+  if (
+    selectedSkinId &&
+    !EXCLUSIVE_SKINS.has(selectedSkinId) &&
+    !filteredOptions.includes(selectedSkinId)
+  ) {
+    return [selectedSkinId, ...filteredOptions];
+  }
+
+  return filteredOptions;
 };
 
 const createEmptyCost = (costType: CostTypes): CostConfig => {
@@ -451,13 +477,13 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                   shouldDirty: true,
                 })
               }>
-              {[...ALL_SKINS]
-                .filter((skinId) => !EXCLUSIVE_SKINS.has(skinId))
-                .map((skinId) => (
+              {getSkinOptionsForHero(reward?.heroId, reward?.skinId).map(
+                (skinId) => (
                   <MenuItem key={skinId} value={skinId}>
                     {skinId}
                   </MenuItem>
-                ))}
+                )
+              )}
             </TextField>
           </Grid>
         </>
@@ -742,13 +768,14 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                 { shouldDirty: true }
               )
             }>
-            {[...ALL_SKINS]
-              .filter((skinId) => !EXCLUSIVE_SKINS.has(skinId))
-              .map((skinId) => (
-                <MenuItem key={skinId} value={skinId}>
-                  {skinId}
-                </MenuItem>
-              ))}
+            {getSkinOptionsForHero(
+              options?.featuringHeroId,
+              options?.featuringSkinId
+            ).map((skinId) => (
+              <MenuItem key={skinId} value={skinId}>
+                {skinId}
+              </MenuItem>
+            ))}
           </TextField>
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
