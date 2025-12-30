@@ -21,9 +21,24 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   FormProvider,
   type FieldArrayPath,
@@ -597,7 +612,10 @@ const RewardsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   );
 };
 
-const OfferCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+const OfferCard: React.FC<{
+  namePrefix: string;
+  header?: React.ReactNode;
+}> = ({ namePrefix, header }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
   const offer = useWatch({
     control,
@@ -625,6 +643,7 @@ const OfferCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
   return (
     <Paper sx={{ p: 2, mb: 3 }}>
+      {header}
       <Grid container spacing={2} alignItems="center">
         <Grid size={{ xs: 12, md: 6 }}>
           <FormControlLabel
@@ -682,36 +701,100 @@ const OfferCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   );
 };
 
+const SortableOffer: React.FC<{
+  id: string;
+  index: number;
+  namePrefix: string;
+  onRemove: () => void;
+}> = ({ id, index, namePrefix, onRemove }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.8 : 1,
+  };
+
+  return (
+    <Box ref={setNodeRef} style={style} sx={{ mb: 2 }}>
+      <OfferCard
+        namePrefix={namePrefix}
+        header={
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              mb: 2,
+            }}>
+            <Typography variant="subtitle1">Step {index + 1}</Typography>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <IconButton
+                aria-label="Drag step"
+                {...attributes}
+                {...listeners}>
+                <DragIndicatorIcon />
+              </IconButton>
+              <IconButton color="error" onClick={onRemove}>
+                <DeleteIcon />
+              </IconButton>
+            </Box>
+          </Box>
+        }
+      />
+    </Box>
+  );
+};
+
 const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control } = useFormContext<ChainsListConfig>();
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: `${namePrefix}.chainOffers` as FieldArrayPath<ChainsListConfig>,
   });
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = fields.findIndex((field) => field.id === active.id);
+    const newIndex = fields.findIndex((field) => field.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    move(oldIndex, newIndex);
+  };
 
   return (
     <Box sx={{ mt: 2 }}>
       <Typography variant="subtitle1" sx={{ mb: 1 }}>
         Chain Offers ({fields.length})
       </Typography>
-      {fields.map((field, offerIndex) => (
-        <Box key={field.id} sx={{ mb: 2 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, md: 10 }}>
-              <OfferCard
-                namePrefix={`${namePrefix}.chainOffers.${offerIndex}`}
-              />
-            </Grid>
-            <Grid
-              size={{ xs: 12, md: 2 }}
-              sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <IconButton color="error" onClick={() => remove(offerIndex)}>
-                <DeleteIcon />
-              </IconButton>
-            </Grid>
-          </Grid>
-        </Box>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}>
+        <SortableContext
+          items={fields.map((field) => field.id)}
+          strategy={verticalListSortingStrategy}>
+          {fields.map((field, offerIndex) => (
+            <SortableOffer
+              key={field.id}
+              id={field.id}
+              index={offerIndex}
+              namePrefix={`${namePrefix}.chainOffers.${offerIndex}`}
+              onRemove={() => remove(offerIndex)}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
 
       <Button
         variant="outlined"
