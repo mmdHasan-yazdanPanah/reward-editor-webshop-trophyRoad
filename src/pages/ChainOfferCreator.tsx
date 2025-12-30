@@ -57,7 +57,7 @@ import {
   RewardType,
   chestType,
 } from '../types/models';
-import { getHeroLabel } from '../types/heroModels';
+import { getHeroLabel, HEROES } from '../types/heroModels';
 import { SKINS_BY_HERO } from '../types/skinModels';
 import {
   type ChainBase,
@@ -127,14 +127,23 @@ const formatConditionValue = (value: Condition['Value']): string => {
 const parseConditionValue = (
   input: string,
   featureName?: FeatureName,
-  options?: { allowPartial?: boolean }
+  options?: { allowPartial?: boolean; relation?: Relation }
 ) => {
   const trimmed = input.trim();
   const allowPartial = options?.allowPartial ?? true;
   const hasTrailingComma = /,\s*$/.test(input);
+  const relation = options?.relation;
+  const isArrayRelation = relation === Relation.inc || relation === Relation.exc;
+  const isNumericRelation =
+    relation === Relation.gt ||
+    relation === Relation.gte ||
+    relation === Relation.lt ||
+    relation === Relation.lte;
+  const isSingleRelation =
+    relation === Relation.eq || relation === Relation.neq || isNumericRelation;
 
-  if (allowPartial && hasTrailingComma) return input;
-  if (!trimmed) return '';
+  if (allowPartial && hasTrailingComma && !isSingleRelation) return input;
+  if (!trimmed) return isArrayRelation ? [] : '';
 
   const rawParts = trimmed
     .split(',')
@@ -151,7 +160,9 @@ const parseConditionValue = (
     return value;
   };
 
-  if (hasArray) {
+  const shouldArray = isArrayRelation || (!isSingleRelation && hasArray);
+
+  if (shouldArray) {
     if (isNumericFeature) {
       return rawParts
         .map((part) => Number(part))
@@ -160,7 +171,7 @@ const parseConditionValue = (
     return rawParts.map(toNumberOrString);
   }
 
-  if (isNumericFeature) {
+  if (isNumericRelation || isNumericFeature) {
     const asNumber = Number(trimmed);
     return Number.isNaN(asNumber) ? '' : asNumber;
   }
@@ -1055,6 +1066,32 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         const featureName = condition?.FeatureName;
         const relationValue = condition?.Relation || Relation.inc;
         const value = condition?.Value;
+        const isMultiRelation =
+          relationValue === Relation.inc || relationValue === Relation.exc;
+        const heroValue = Array.isArray(value)
+          ? value.length > 0
+            ? Number(value[0])
+            : ''
+          : typeof value === 'number'
+          ? value
+          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          ? Number(value)
+          : '';
+        const heroMultiValue = Array.isArray(value)
+          ? value.map(Number).filter((val) => !Number.isNaN(val))
+          : typeof value === 'number'
+          ? [value]
+          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          ? [Number(value)]
+          : [];
+        const arenaValue = typeof value === 'number' ? value : '';
+        const arenaMultiValue = Array.isArray(value)
+          ? value.map(Number).filter((val) => !Number.isNaN(val))
+          : typeof value === 'number'
+          ? [value]
+          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          ? [Number(value)]
+          : [];
 
         return (
           <Paper key={field.id} sx={{ p: 2, mb: 2 }}>
@@ -1094,11 +1131,24 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                   label="Relation"
                   value={relationValue}
                   onChange={(e) =>
-                    setValue(
-                      `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
-                      e.target.value as Relation,
-                      { shouldDirty: true }
-                    )
+                    {
+                      const nextRelation = e.target.value as Relation;
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
+                        nextRelation,
+                        { shouldDirty: true }
+                      );
+                      const normalized = parseConditionValue(
+                        formatConditionValue(value ?? ''),
+                        featureName,
+                        { allowPartial: false, relation: nextRelation }
+                      );
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        normalized,
+                        { shouldDirty: true }
+                      );
+                    }
                   }>
                   {Object.values(Relation).map((relation) => (
                     <MenuItem key={relation} value={relation}>
@@ -1146,16 +1196,48 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                       </MenuItem>
                     ))}
                   </TextField>
+                ) : featureName === FeatureName.Heroes ? (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Hero"
+                    SelectProps={{ multiple: isMultiRelation }}
+                    value={isMultiRelation ? heroMultiValue : heroValue}
+                    onChange={(e) =>
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        isMultiRelation
+                          ? Array.isArray(e.target.value)
+                            ? e.target.value.map((entry) => Number(entry))
+                            : [Number(e.target.value)]
+                          : Number(e.target.value),
+                        { shouldDirty: true }
+                      )
+                    }>
+                    <MenuItem value="">
+                      <em>Pick hero</em>
+                    </MenuItem>
+                    {HEROES.map((hero) => (
+                      <MenuItem key={hero.heroId} value={hero.heroId}>
+                        {hero.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
                 ) : featureName === FeatureName.Arena ? (
                   <TextField
                     select
                     fullWidth
                     label="Arena"
-                    value={typeof value === 'number' ? value : ''}
+                    SelectProps={{ multiple: isMultiRelation }}
+                    value={isMultiRelation ? arenaMultiValue : arenaValue}
                     onChange={(e) =>
                       setValue(
                         `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
-                        Number(e.target.value),
+                        isMultiRelation
+                          ? Array.isArray(e.target.value)
+                            ? e.target.value.map((entry) => Number(entry))
+                            : [Number(e.target.value)]
+                          : Number(e.target.value),
                         { shouldDirty: true }
                       )
                     }>
@@ -1179,6 +1261,7 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                         `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
                         parseConditionValue(e.target.value, featureName, {
                           allowPartial: true,
+                          relation: relationValue,
                         }),
                         { shouldDirty: true }
                       )
@@ -1188,6 +1271,7 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                         `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
                         parseConditionValue(e.target.value, featureName, {
                           allowPartial: false,
+                          relation: relationValue,
                         }),
                         { shouldDirty: true }
                       )
@@ -1383,7 +1467,11 @@ export const ChainOfferCreator: React.FC = () => {
     data.chainsAndConditions.forEach((group) => {
       group.Conditions.forEach((condition) => {
         if (condition.FeatureName === FeatureName.Heroes) {
-          condition.Value = [heroSwapValue];
+          condition.Value =
+            condition.Relation === Relation.inc ||
+            condition.Relation === Relation.exc
+              ? [heroSwapValue]
+              : heroSwapValue;
         }
       });
 
