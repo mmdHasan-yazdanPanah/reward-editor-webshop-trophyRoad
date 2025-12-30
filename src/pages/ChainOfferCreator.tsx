@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -297,6 +297,14 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   }) as CostConfig | undefined;
   const costType = cost?.costType || CostTypes.Free;
 
+  useEffect(() => {
+    if (!cost?.costType) {
+      setValue(namePrefix as any, createEmptyCost(CostTypes.Free), {
+        shouldDirty: true,
+      });
+    }
+  }, [cost?.costType, namePrefix, setValue]);
+
   const handleCostTypeChange = (nextType: CostTypes) => {
     setValue(namePrefix as any, createEmptyCost(nextType), {
       shouldDirty: true,
@@ -379,6 +387,30 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
     rewardType !== RewardType.NewHero &&
     rewardType !== RewardType.Skin &&
     rewardType !== undefined;
+
+  useEffect(() => {
+    if (!rewardType) {
+      setValue(`${namePrefix}.rewardType` as any, RewardType.Gem, {
+        shouldDirty: true,
+      });
+    }
+    if (rewardType === RewardType.Chest && reward?.chestType === undefined) {
+      setValue(`${namePrefix}.chestType` as any, chestType.Free, {
+        shouldDirty: true,
+      });
+    }
+    if (rewardType === RewardType.HeroAbilityCard && !reward?.ability) {
+      setValue(`${namePrefix}.ability` as any, 'ab1', {
+        shouldDirty: true,
+      });
+    }
+  }, [
+    namePrefix,
+    reward?.ability,
+    reward?.chestType,
+    rewardType,
+    setValue,
+  ]);
 
   return (
     <Grid container spacing={2}>
@@ -1136,6 +1168,23 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
     control,
     name: `${namePrefix}.Conditions` as FieldPath<ChainsListConfig>,
   }) || []) as Condition[];
+
+  useEffect(() => {
+    conditions.forEach((condition, conditionIndex) => {
+      if (!condition?.FeatureName) {
+        setValue(
+          `${namePrefix}.Conditions.${conditionIndex}.FeatureName` as any,
+          FeatureName.Heroes
+        );
+      }
+      if (!condition?.Relation) {
+        setValue(
+          `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
+          Relation.inc
+        );
+      }
+    });
+  }, [conditions, namePrefix, setValue]);
 
   return (
     <Box>

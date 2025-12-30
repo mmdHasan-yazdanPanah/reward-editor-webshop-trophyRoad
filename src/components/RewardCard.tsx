@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useFormContext, Controller, useWatch } from 'react-hook-form';
 import {
   Card,
@@ -22,7 +22,7 @@ interface Props {
 }
 
 const RewardCardComponent: React.FC<Props> = ({ index, onRemove }) => {
-  const { control } = useFormContext();
+  const { control, setValue } = useFormContext();
 
   const itemData = useWatch({
     control,
@@ -32,6 +32,33 @@ const RewardCardComponent: React.FC<Props> = ({ index, onRemove }) => {
   const errors = itemData ? validateRewardEntry(itemData) : [];
   const hasError = errors.length > 0;
   const rewardType = itemData?.reward?.rewardType;
+
+  useEffect(() => {
+    if (!itemData) return;
+
+    if (!rewardType) {
+      setValue(`items.${index}.reward.rewardType`, RewardType.Gem);
+    }
+    if (
+      rewardType === RewardType.Chest &&
+      itemData?.reward?.chestType === undefined
+    ) {
+      setValue(`items.${index}.reward.chestType`, chestType.Free);
+    }
+    if (
+      rewardType === RewardType.HeroAbilityCard &&
+      !itemData?.reward?.ability
+    ) {
+      setValue(`items.${index}.reward.ability`, 'ab1');
+    }
+  }, [
+    index,
+    itemData,
+    itemData?.reward?.ability,
+    itemData?.reward?.chestType,
+    rewardType,
+    setValue,
+  ]);
 
   const renderField = (
     name: string,
