@@ -169,6 +169,7 @@ const parseConditionValue = (
 };
 
 const allSkinIds = Array.from(ALL_SKINS);
+const arenaOptions = Array.from({ length: 13 }, (_, index) => index + 1);
 
 const getSkinOptionsForHero = (
   heroId?: number,
@@ -1142,6 +1143,28 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                     {allSkinIds.map((skinId) => (
                       <MenuItem key={skinId} value={skinId}>
                         {skinId}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : featureName === FeatureName.Arena ? (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Arena"
+                    value={typeof value === 'number' ? value : ''}
+                    onChange={(e) =>
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        Number(e.target.value),
+                        { shouldDirty: true }
+                      )
+                    }>
+                    <MenuItem value="">
+                      <em>Pick arena</em>
+                    </MenuItem>
+                    {arenaOptions.map((arenaValue) => (
+                      <MenuItem key={arenaValue} value={arenaValue}>
+                        {arenaValue}
                       </MenuItem>
                     ))}
                   </TextField>
