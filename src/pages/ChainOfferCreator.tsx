@@ -757,7 +757,7 @@ const SortableOffer: React.FC<{
 
 const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control } = useFormContext<ChainsListConfig>();
-  const { fields, append, remove, move } = useFieldArray({
+  const { fields, append, remove, move, insert } = useFieldArray({
     control,
     name: `${namePrefix}.chainOffers` as FieldArrayPath<ChainsListConfig>,
   });
@@ -787,13 +787,24 @@ const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           items={fields.map((field) => field.id)}
           strategy={verticalListSortingStrategy}>
           {fields.map((field, offerIndex) => (
-            <SortableOffer
-              key={field.id}
-              id={field.id}
-              index={offerIndex}
-              namePrefix={`${namePrefix}.chainOffers.${offerIndex}`}
-              onRemove={() => remove(offerIndex)}
-            />
+            <Box key={field.id}>
+              <SortableOffer
+                id={field.id}
+                index={offerIndex}
+                namePrefix={`${namePrefix}.chainOffers.${offerIndex}`}
+                onRemove={() => remove(offerIndex)}
+              />
+              {offerIndex < fields.length - 1 && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => insert(offerIndex + 1, createDefaultOffer())}>
+                    Add Step Here
+                  </Button>
+                </Box>
+              )}
+            </Box>
           ))}
         </SortableContext>
       </DndContext>
