@@ -124,8 +124,16 @@ const formatConditionValue = (value: Condition['Value']): string => {
   return String(value);
 };
 
-const parseConditionValue = (input: string, featureName?: FeatureName) => {
+const parseConditionValue = (
+  input: string,
+  featureName?: FeatureName,
+  options?: { allowPartial?: boolean }
+) => {
   const trimmed = input.trim();
+  const allowPartial = options?.allowPartial ?? true;
+  const hasTrailingComma = /,\s*$/.test(input);
+
+  if (allowPartial && hasTrailingComma) return input;
   if (!trimmed) return '';
 
   const rawParts = trimmed
@@ -1146,7 +1154,18 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                     onChange={(e) =>
                       setValue(
                         `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
-                        parseConditionValue(e.target.value, featureName),
+                        parseConditionValue(e.target.value, featureName, {
+                          allowPartial: true,
+                        }),
+                        { shouldDirty: true }
+                      )
+                    }
+                    onBlur={(e) =>
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        parseConditionValue(e.target.value, featureName, {
+                          allowPartial: false,
+                        }),
                         { shouldDirty: true }
                       )
                     }
