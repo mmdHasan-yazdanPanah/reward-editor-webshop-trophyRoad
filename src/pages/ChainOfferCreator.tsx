@@ -1,0 +1,1205 @@
+import React, { useState } from 'react';
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  TextField,
+  Typography,
+  IconButton,
+  MenuItem,
+  Checkbox,
+  FormControlLabel,
+  Divider,
+  Alert,
+} from '@mui/material';
+import Grid from '@mui/material/Grid';
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
+import CodeIcon from '@mui/icons-material/Code';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import {
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+  useWatch,
+} from 'react-hook-form';
+
+import {
+  ALL_SKINS,
+  EXCLUSIVE_SKINS,
+  RewardType,
+  chestType,
+} from '../types/models';
+import {
+  type ChainBase,
+  type ChainOfferItem,
+  type ChainOfferRewardItem,
+  type ChainsListConfig,
+  type Condition,
+  type CostConfig,
+  CostTypes,
+  FeatureName,
+  Relation,
+} from '../types/chainOfferModels';
+
+const numericFeatureNames = new Set([
+  FeatureName.TotalPaid,
+  FeatureName.LifeTime,
+  FeatureName.Experience,
+  FeatureName.BattlesCount,
+  FeatureName.Arena,
+  FeatureName.Heroes,
+]);
+
+const createDefaultReward = (): ChainOfferRewardItem => ({
+  rewardType: RewardType.Gem,
+  amount: 10,
+});
+
+const createDefaultOffer = (): ChainOfferItem => ({
+  rewards: [createDefaultReward()],
+  cost: { costType: CostTypes.Free },
+});
+
+const createDefaultChain = (): ChainBase => ({
+  chainId: 'chain-',
+  duration: 0,
+  options: {
+    hiddenRewards: false,
+  },
+  chainOffers: [createDefaultOffer()],
+});
+
+const createDefaultGroup =
+  (): ChainsListConfig['chainsAndConditions'][number] => ({
+    Conditions: [
+      {
+        FeatureName: FeatureName.Heroes,
+        Relation: Relation.inc,
+        Value: [1],
+      },
+    ],
+    chainList: [createDefaultChain()],
+  });
+
+const defaultValues: ChainsListConfig = {
+  chainsAndConditions: [createDefaultGroup()],
+};
+
+const formatConditionValue = (value: Condition['Value']): string => {
+  if (Array.isArray(value)) return value.join(', ');
+  if (value === undefined || value === null) return '';
+  return String(value);
+};
+
+const parseConditionValue = (input: string, featureName?: FeatureName) => {
+  const trimmed = input.trim();
+  if (!trimmed) return '';
+
+  const rawParts = trimmed
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const hasArray = rawParts.length > 1;
+  const isNumericFeature = featureName
+    ? numericFeatureNames.has(featureName)
+    : false;
+
+  const toNumberOrString = (value: string) => {
+    const asNumber = Number(value);
+    if (!Number.isNaN(asNumber) && value !== '') return asNumber;
+    return value;
+  };
+
+  if (hasArray) {
+    if (isNumericFeature) {
+      return rawParts
+        .map((part) => Number(part))
+        .filter((val) => !Number.isNaN(val));
+    }
+    return rawParts.map(toNumberOrString);
+  }
+
+  if (isNumericFeature) {
+    const asNumber = Number(trimmed);
+    return Number.isNaN(asNumber) ? '' : asNumber;
+  }
+
+  return toNumberOrString(trimmed);
+};
+
+const createEmptyCost = (costType: CostTypes): CostConfig => {
+  if (costType === CostTypes.Money) {
+    return { costType, productSku: 0 };
+  }
+  if ([CostTypes.Gem, CostTypes.Gold, CostTypes.ElPoint].includes(costType)) {
+    return { costType, amount: 0 };
+  }
+  return { costType };
+};
+
+const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+  const cost = useWatch({ control, name: namePrefix as const }) as
+    | CostConfig
+    | undefined;
+  const costType = cost?.costType || CostTypes.Free;
+
+  const handleCostTypeChange = (nextType: CostTypes) => {
+    setValue(namePrefix as any, createEmptyCost(nextType), {
+      shouldDirty: true,
+    });
+  };
+
+  return (
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, md: 4 }}>
+        <TextField
+          select
+          fullWidth
+          label="Cost Type"
+          value={costType}
+          onChange={(e) => handleCostTypeChange(e.target.value as CostTypes)}>
+          {Object.values(CostTypes).map((type) => (
+            <MenuItem key={type} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      {[CostTypes.Gem, CostTypes.Gold, CostTypes.ElPoint].includes(
+        costType
+      ) && (
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Amount"
+            type="number"
+            fullWidth
+            value={(cost as any)?.amount ?? 0}
+            onChange={(e) =>
+              setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+      )}
+
+      {costType === CostTypes.Money && (
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Product SKU"
+            type="number"
+            fullWidth
+            value={(cost as any)?.productSku ?? 0}
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.productSku` as any,
+                Number(e.target.value),
+                { shouldDirty: true }
+              )
+            }
+          />
+        </Grid>
+      )}
+    </Grid>
+  );
+};
+
+const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+  const reward = useWatch({ control, name: namePrefix as const }) as
+    | ChainOfferRewardItem
+    | undefined;
+  const rewardType = reward?.rewardType;
+  const showAmount =
+    rewardType !== RewardType.Chest &&
+    rewardType !== RewardType.HeroCard &&
+    rewardType !== RewardType.HeroAbilityCard &&
+    rewardType !== RewardType.NewHero &&
+    rewardType !== RewardType.Skin &&
+    rewardType !== undefined;
+
+  return (
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 12, md: 4 }}>
+        <TextField
+          select
+          fullWidth
+          label="Reward Type"
+          value={rewardType || RewardType.Gem}
+          onChange={(e) =>
+            setValue(
+              `${namePrefix}.rewardType` as any,
+              e.target.value as RewardType,
+              { shouldDirty: true }
+            )
+          }>
+          {Object.values(RewardType).map((type) => (
+            <MenuItem key={type} value={type}>
+              {type}
+            </MenuItem>
+          ))}
+        </TextField>
+      </Grid>
+
+      {showAmount && (
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Amount"
+            type="number"
+            fullWidth
+            value={reward?.amount ?? 0}
+            onChange={(e) =>
+              setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+      )}
+
+      {rewardType === RewardType.Chest && (
+        <>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Amount"
+              type="number"
+              fullWidth
+              value={reward?.amount ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.amount` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              select
+              fullWidth
+              label="Chest Type"
+              value={reward?.chestType ?? chestType.Free}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.chestType` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }>
+              {Object.keys(chestType)
+                .filter((key) => Number.isNaN(Number(key)))
+                .map((key) => (
+                  <MenuItem
+                    key={key}
+                    value={chestType[key as keyof typeof chestType]}>
+                    {key}
+                  </MenuItem>
+                ))}
+            </TextField>
+          </Grid>
+        </>
+      )}
+
+      {rewardType === RewardType.NewHero && (
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Hero ID"
+            type="number"
+            fullWidth
+            value={reward?.heroId ?? 0}
+            onChange={(e) =>
+              setValue(`${namePrefix}.heroId` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+      )}
+
+      {rewardType === RewardType.HeroCard && (
+        <>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Hero ID"
+              type="number"
+              fullWidth
+              value={reward?.heroId ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.heroId` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Card Amount"
+              type="number"
+              fullWidth
+              value={reward?.cardAmount ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.cardAmount` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+        </>
+      )}
+
+      {rewardType === RewardType.HeroAbilityCard && (
+        <>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Hero ID"
+              type="number"
+              fullWidth
+              value={reward?.heroId ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.heroId` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              select
+              fullWidth
+              label="Ability"
+              value={reward?.ability ?? 'ab1'}
+              onChange={(e) =>
+                setValue(`${namePrefix}.ability` as any, e.target.value, {
+                  shouldDirty: true,
+                })
+              }>
+              <MenuItem value="ab1">ab1</MenuItem>
+              <MenuItem value="ab2">ab2</MenuItem>
+              <MenuItem value="ab3">ab3</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Card Amount"
+              type="number"
+              fullWidth
+              value={reward?.cardAmount ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.cardAmount` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+        </>
+      )}
+
+      {rewardType === RewardType.Skin && (
+        <>
+          <Grid size={{ xs: 12, md: 4 }}>
+            <TextField
+              label="Hero ID"
+              type="number"
+              fullWidth
+              value={reward?.heroId ?? 0}
+              onChange={(e) =>
+                setValue(
+                  `${namePrefix}.heroId` as any,
+                  Number(e.target.value),
+                  { shouldDirty: true }
+                )
+              }
+            />
+          </Grid>
+          <Grid size={{ xs: 12, md: 6 }}>
+            <TextField
+              select
+              fullWidth
+              label="Skin ID"
+              value={reward?.skinId ?? ''}
+              onChange={(e) =>
+                setValue(`${namePrefix}.skinId` as any, e.target.value, {
+                  shouldDirty: true,
+                })
+              }>
+              {[...ALL_SKINS]
+                .filter((skinId) => !EXCLUSIVE_SKINS.has(skinId))
+                .map((skinId) => (
+                  <MenuItem key={skinId} value={skinId}>
+                    {skinId}
+                  </MenuItem>
+                ))}
+            </TextField>
+          </Grid>
+        </>
+      )}
+
+      {!rewardType && (
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Amount"
+            type="number"
+            fullWidth
+            value={reward?.amount ?? 0}
+            onChange={(e) =>
+              setValue(`${namePrefix}.amount` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+      )}
+    </Grid>
+  );
+};
+
+const RewardsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control } = useFormContext<ChainsListConfig>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `${namePrefix}.rewards` as const,
+  });
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        Rewards ({fields.length})
+      </Typography>
+      {fields.map((field, rewardIndex) => (
+        <Paper key={field.id} sx={{ p: 2, mb: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12 }}>
+              <RewardFields
+                namePrefix={`${namePrefix}.rewards.${rewardIndex}`}
+              />
+            </Grid>
+            <Grid
+              size={{ xs: 12 }}
+              sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <IconButton color="error" onClick={() => remove(rewardIndex)}>
+                <DeleteIcon />
+              </IconButton>
+            </Grid>
+          </Grid>
+        </Paper>
+      ))}
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => append(createDefaultReward())}>
+        Add Reward
+      </Button>
+    </Box>
+  );
+};
+
+const OfferCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+  const offer = useWatch({ control, name: namePrefix as const }) as
+    | ChainOfferItem
+    | undefined;
+  const hasLocalizedCost = Boolean(offer?.cost_IR || offer?.cost_EU);
+
+  const handleToggleCostMode = (useLocalized: boolean) => {
+    const nextOffer: ChainOfferItem = {
+      rewards: offer?.rewards || [createDefaultReward()],
+      additionalDetails: offer?.additionalDetails,
+    };
+
+    if (useLocalized) {
+      nextOffer.cost_IR = offer?.cost_IR || { costType: CostTypes.Free };
+      nextOffer.cost_EU = offer?.cost_EU || { costType: CostTypes.Free };
+    } else {
+      nextOffer.cost = offer?.cost || { costType: CostTypes.Free };
+    }
+
+    setValue(namePrefix as any, nextOffer, { shouldDirty: true });
+  };
+
+  return (
+    <Paper sx={{ p: 2, mb: 3 }}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={hasLocalizedCost}
+                onChange={(e) => handleToggleCostMode(e.target.checked)}
+              />
+            }
+            label="Use localized cost (cost_IR + cost_EU)"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={Boolean(offer?.additionalDetails?.isGrandReward)}
+                onChange={(e) =>
+                  setValue(
+                    `${namePrefix}.additionalDetails.isGrandReward` as any,
+                    e.target.checked,
+                    { shouldDirty: true }
+                  )
+                }
+              />
+            }
+            label="Grand Reward"
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          {hasLocalizedCost ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Cost IR
+                </Typography>
+                <CostEditor namePrefix={`${namePrefix}.cost_IR`} />
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Cost EU
+                </Typography>
+                <CostEditor namePrefix={`${namePrefix}.cost_EU`} />
+              </Box>
+            </Box>
+          ) : (
+            <CostEditor namePrefix={`${namePrefix}.cost`} />
+          )}
+        </Grid>
+      </Grid>
+
+      <RewardsList namePrefix={namePrefix} />
+    </Paper>
+  );
+};
+
+const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control } = useFormContext<ChainsListConfig>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `${namePrefix}.chainOffers` as const,
+  });
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        Chain Offers ({fields.length})
+      </Typography>
+      {fields.map((field, offerIndex) => (
+        <Box key={field.id} sx={{ mb: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 10 }}>
+              <OfferCard
+                namePrefix={`${namePrefix}.chainOffers.${offerIndex}`}
+              />
+            </Grid>
+            <Grid
+              size={{ xs: 12, md: 2 }}
+              sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <IconButton color="error" onClick={() => remove(offerIndex)}>
+                <DeleteIcon />
+              </IconButton>
+            </Grid>
+          </Grid>
+        </Box>
+      ))}
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => append(createDefaultOffer())}>
+        Add Offer
+      </Button>
+    </Box>
+  );
+};
+
+const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+  const options = useWatch({
+    control,
+    name: `${namePrefix}.options` as const,
+  }) as Record<string, any> | undefined;
+
+  return (
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Chain ID"
+            fullWidth
+            value={
+              (useWatch({ control, name: `${namePrefix}.chainId` as const }) as
+                | string
+                | undefined) ?? ''
+            }
+            onChange={(e) =>
+              setValue(`${namePrefix}.chainId` as any, e.target.value, {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Duration (ms)"
+            type="number"
+            fullWidth
+            value={
+              (useWatch({
+                control,
+                name: `${namePrefix}.duration` as const,
+              }) as number | undefined) ?? 0
+            }
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.duration` as any,
+                Number(e.target.value),
+                { shouldDirty: true }
+              )
+            }
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Weight"
+            type="number"
+            fullWidth
+            value={
+              (useWatch({ control, name: `${namePrefix}.weight` as const }) as
+                | number
+                | undefined) ?? 0
+            }
+            onChange={(e) =>
+              setValue(`${namePrefix}.weight` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Featuring Hero ID"
+            type="number"
+            fullWidth
+            value={options?.featuringHeroId ?? 0}
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.options.featuringHeroId` as any,
+                Number(e.target.value),
+                { shouldDirty: true }
+              )
+            }
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            select
+            fullWidth
+            label="Featuring Skin ID"
+            value={options?.featuringSkinId ?? ''}
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.options.featuringSkinId` as any,
+                e.target.value,
+                { shouldDirty: true }
+              )
+            }>
+            {[...ALL_SKINS]
+              .filter((skinId) => !EXCLUSIVE_SKINS.has(skinId))
+              .map((skinId) => (
+                <MenuItem key={skinId} value={skinId}>
+                  {skinId}
+                </MenuItem>
+              ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={Boolean(options?.hiddenRewards)}
+                onChange={(e) =>
+                  setValue(
+                    `${namePrefix}.options.hiddenRewards` as any,
+                    e.target.checked,
+                    { shouldDirty: true }
+                  )
+                }
+              />
+            }
+            label="Hidden Rewards"
+          />
+        </Grid>
+      </Grid>
+
+      <ChainOffersList namePrefix={namePrefix} />
+    </Paper>
+  );
+};
+
+const ChainList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control } = useFormContext<ChainsListConfig>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `${namePrefix}.chainList` as const,
+  });
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        Chain List ({fields.length})
+      </Typography>
+      {fields.map((field, chainIndex) => (
+        <Box key={field.id} sx={{ mb: 2 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 11 }}>
+              <ChainCard namePrefix={`${namePrefix}.chainList.${chainIndex}`} />
+            </Grid>
+            <Grid
+              size={{ xs: 12, md: 1 }}
+              sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <IconButton color="error" onClick={() => remove(chainIndex)}>
+                <DeleteIcon />
+              </IconButton>
+            </Grid>
+          </Grid>
+        </Box>
+      ))}
+
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() => append(createDefaultChain())}>
+        Add Chain
+      </Button>
+    </Box>
+  );
+};
+
+const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `${namePrefix}.Conditions` as const,
+  });
+  const conditions = (useWatch({
+    control,
+    name: `${namePrefix}.Conditions` as const,
+  }) || []) as Condition[];
+
+  return (
+    <Box>
+      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+        Conditions ({fields.length})
+      </Typography>
+      {fields.map((field, conditionIndex) => {
+        const condition = conditions[conditionIndex];
+        const featureName = condition?.FeatureName;
+        const relationValue = condition?.Relation || Relation.inc;
+        const value = condition?.Value;
+
+        return (
+          <Paper key={field.id} sx={{ p: 2, mb: 2 }}>
+            <Grid container spacing={2} alignItems="center">
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Feature"
+                  value={featureName || FeatureName.Heroes}
+                  onChange={(e) =>
+                    setValue(
+                      `${namePrefix}.Conditions.${conditionIndex}.FeatureName` as any,
+                      e.target.value as FeatureName,
+                      { shouldDirty: true }
+                    )
+                  }>
+                  {Object.values(FeatureName).map((name) => (
+                    <MenuItem key={name} value={name}>
+                      {name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 3 }}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Relation"
+                  value={relationValue}
+                  onChange={(e) =>
+                    setValue(
+                      `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
+                      e.target.value as Relation,
+                      { shouldDirty: true }
+                    )
+                  }>
+                  {Object.values(Relation).map((relation) => (
+                    <MenuItem key={relation} value={relation}>
+                      {relation}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 5 }}>
+                <TextField
+                  label="Value"
+                  fullWidth
+                  helperText="Use comma-separated list for arrays"
+                  value={formatConditionValue(value ?? '')}
+                  onChange={(e) =>
+                    setValue(
+                      `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                      parseConditionValue(e.target.value, featureName),
+                      { shouldDirty: true }
+                    )
+                  }
+                />
+              </Grid>
+              <Grid
+                size={{ xs: 12, md: 1 }}
+                sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <IconButton
+                  color="error"
+                  onClick={() => remove(conditionIndex)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Grid>
+            </Grid>
+          </Paper>
+        );
+      })}
+      <Button
+        variant="outlined"
+        startIcon={<AddIcon />}
+        onClick={() =>
+          append({
+            FeatureName: FeatureName.Heroes,
+            Relation: Relation.inc,
+            Value: [1],
+          })
+        }>
+        Add Condition
+      </Button>
+    </Box>
+  );
+};
+
+const GroupCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+  const { control, setValue } = useFormContext<ChainsListConfig>();
+
+  return (
+    <Paper sx={{ p: 3, mb: 4 }}>
+      <Grid container spacing={2}>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Group Max Select"
+            type="number"
+            fullWidth
+            value={
+              (useWatch({
+                control,
+                name: `${namePrefix}.maxSelect` as const,
+              }) as number | undefined) ?? ''
+            }
+            onChange={(e) =>
+              setValue(
+                `${namePrefix}.maxSelect` as any,
+                Number(e.target.value),
+                { shouldDirty: true }
+              )
+            }
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <TextField
+            label="Group Weight"
+            type="number"
+            fullWidth
+            value={
+              (useWatch({ control, name: `${namePrefix}.weight` as const }) as
+                | number
+                | undefined) ?? ''
+            }
+            onChange={(e) =>
+              setValue(`${namePrefix}.weight` as any, Number(e.target.value), {
+                shouldDirty: true,
+              })
+            }
+          />
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ my: 3 }} />
+
+      <ConditionsList namePrefix={namePrefix} />
+
+      <Divider sx={{ my: 3 }} />
+
+      <ChainList namePrefix={namePrefix} />
+    </Paper>
+  );
+};
+
+export const ChainOfferCreator: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'json' | 'visual'>('visual');
+  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [heroSwapValue, setHeroSwapValue] = useState<number>(0);
+
+  const methods = useForm<ChainsListConfig>({
+    defaultValues,
+    mode: 'onChange',
+  });
+
+  const { control, reset, watch, getValues } = methods;
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'chainsAndConditions',
+  });
+
+  const formValues = watch();
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      tryParse(text);
+    };
+    reader.readAsText(file);
+  };
+
+  const tryParse = (text: string) => {
+    try {
+      const data = JSON.parse(text) as ChainsListConfig;
+      if (data && Array.isArray(data.chainsAndConditions)) {
+        reset(data);
+        setJsonError(null);
+        setViewMode('visual');
+      } else {
+        setJsonError('Invalid JSON structure.');
+      }
+    } catch (e) {
+      setJsonError('Invalid JSON format');
+    }
+  };
+
+  const handleExport = () => {
+    const data = JSON.parse(JSON.stringify(getValues())) as ChainsListConfig;
+    data.chainsAndConditions.forEach((group) => {
+      group.chainList.forEach((chain) => {
+        chain.chainOffers.forEach((offer) => {
+          if (offer.cost) {
+            delete offer.cost_IR;
+            delete offer.cost_EU;
+          }
+          if (offer.cost_IR || offer.cost_EU) {
+            delete offer.cost;
+          }
+        });
+      });
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'chain_offer_config.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleHeroSwap = () => {
+    if (!heroSwapValue && heroSwapValue !== 0) return;
+
+    const data = JSON.parse(JSON.stringify(getValues())) as ChainsListConfig;
+    const heroRewardTypes = new Set([
+      RewardType.HeroCard,
+      RewardType.HeroAbilityCard,
+      RewardType.Skin,
+      RewardType.NewHero,
+    ]);
+
+    data.chainsAndConditions.forEach((group) => {
+      group.Conditions.forEach((condition) => {
+        if (condition.FeatureName === FeatureName.Heroes) {
+          condition.Value = [heroSwapValue];
+        }
+      });
+
+      group.chainList.forEach((chain) => {
+        chain.options = chain.options || {};
+        chain.options.featuringHeroId = heroSwapValue;
+
+        chain.chainOffers.forEach((offer) => {
+          offer.rewards.forEach((reward) => {
+            if (heroRewardTypes.has(reward.rewardType)) {
+              reward.heroId = heroSwapValue;
+            }
+          });
+        });
+      });
+    });
+
+    reset(data);
+  };
+
+  return (
+    <FormProvider {...methods}>
+      <Container maxWidth="xl" sx={{ mt: 4 }}>
+        <Paper
+          sx={{
+            p: 2,
+            mb: 2,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            flexWrap: 'wrap',
+          }}>
+          <Button
+            variant="contained"
+            component="label"
+            startIcon={<UploadIcon />}>
+            Upload JSON
+            <input
+              type="file"
+              hidden
+              accept=".json"
+              onChange={handleFileUpload}
+            />
+          </Button>
+          <Typography variant="body2" color="textSecondary">
+            ChainOffer config JSON.
+          </Typography>
+        </Paper>
+
+        <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            onClick={() => setViewMode('json')}
+            startIcon={<CodeIcon />}>
+            JSON
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => setViewMode('visual')}
+            startIcon={<ViewListIcon />}>
+            Visual
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleExport}
+            startIcon={<DownloadIcon />}>
+            Export
+          </Button>
+        </Paper>
+
+        <Paper sx={{ p: 2, mb: 3 }}>
+          <Grid container spacing={2} alignItems="center">
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                label="Change by Hero"
+                type="number"
+                fullWidth
+                value={heroSwapValue}
+                onChange={(e) => setHeroSwapValue(Number(e.target.value))}
+              />
+            </Grid>
+            <Grid size={{ xs: 12, md: 3 }}>
+              <Button
+                variant="contained"
+                startIcon={<SwapHorizIcon />}
+                onClick={handleHeroSwap}>
+                Apply Hero Change
+              </Button>
+            </Grid>
+            <Grid size={{ xs: 12, md: 5 }}>
+              <Alert severity="info">
+                Updates hero conditions, offer rewards with heroId, and
+                featuringHeroId options.
+              </Alert>
+            </Grid>
+          </Grid>
+        </Paper>
+
+        {jsonError && (
+          <Paper sx={{ p: 2, mb: 2, bgcolor: '#ffebee', color: '#c62828' }}>
+            <Typography>{jsonError}</Typography>
+          </Paper>
+        )}
+
+        {viewMode === 'json' ? (
+          <TextField
+            fullWidth
+            multiline
+            minRows={20}
+            variant="outlined"
+            value={JSON.stringify(formValues, null, 2)}
+            onChange={(e) => tryParse(e.target.value)}
+            sx={{ bgcolor: 'white', fontFamily: 'monospace' }}
+          />
+        ) : (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Chain Groups ({fields.length})
+            </Typography>
+
+            {fields.map((field, groupIndex) => (
+              <Box key={field.id} sx={{ mb: 2 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid size={{ xs: 12, md: 11 }}>
+                    <GroupCard
+                      namePrefix={`chainsAndConditions.${groupIndex}`}
+                    />
+                  </Grid>
+                  <Grid
+                    size={{ xs: 12, md: 1 }}
+                    sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <IconButton
+                      color="error"
+                      onClick={() => remove(groupIndex)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Grid>
+                </Grid>
+              </Box>
+            ))}
+
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => append(createDefaultGroup())}>
+              Add Group
+            </Button>
+          </Box>
+        )}
+      </Container>
+    </FormProvider>
+  );
+};
