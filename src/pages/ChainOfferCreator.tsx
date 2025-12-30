@@ -23,6 +23,8 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import {
   FormProvider,
+  type FieldArrayPath,
+  type FieldPath,
   useFieldArray,
   useForm,
   useFormContext,
@@ -134,18 +136,25 @@ const parseConditionValue = (input: string, featureName?: FeatureName) => {
 };
 
 const createEmptyCost = (costType: CostTypes): CostConfig => {
-  if (costType === CostTypes.Money) {
-    return { costType, productSku: 0 };
+  switch (costType) {
+    case CostTypes.Money:
+      return { costType, productSku: 0 };
+    case CostTypes.Gem:
+    case CostTypes.Gold:
+    case CostTypes.ElPoint:
+      return { costType, amount: 0 };
+    case CostTypes.Ad:
+    case CostTypes.Free:
+      return { costType };
   }
-  if ([CostTypes.Gem, CostTypes.Gold, CostTypes.ElPoint].includes(costType)) {
-    return { costType, amount: 0 };
-  }
-  return { costType };
 };
 
 const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
-  const cost = useWatch({ control, name: namePrefix as const }) as
+  const cost = useWatch({
+    control,
+    name: namePrefix as FieldPath<ChainsListConfig>,
+  }) as
     | CostConfig
     | undefined;
   const costType = cost?.costType || CostTypes.Free;
@@ -214,7 +223,10 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
 const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
-  const reward = useWatch({ control, name: namePrefix as const }) as
+  const reward = useWatch({
+    control,
+    name: namePrefix as FieldPath<ChainsListConfig>,
+  }) as
     | ChainOfferRewardItem
     | undefined;
   const rewardType = reward?.rewardType;
@@ -474,7 +486,7 @@ const RewardsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control } = useFormContext<ChainsListConfig>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `${namePrefix}.rewards` as const,
+    name: `${namePrefix}.rewards` as FieldArrayPath<ChainsListConfig>,
   });
 
   return (
@@ -512,7 +524,10 @@ const RewardsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
 const OfferCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
-  const offer = useWatch({ control, name: namePrefix as const }) as
+  const offer = useWatch({
+    control,
+    name: namePrefix as FieldPath<ChainsListConfig>,
+  }) as
     | ChainOfferItem
     | undefined;
   const hasLocalizedCost = Boolean(offer?.cost_IR || offer?.cost_EU);
@@ -596,7 +611,7 @@ const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control } = useFormContext<ChainsListConfig>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `${namePrefix}.chainOffers` as const,
+    name: `${namePrefix}.chainOffers` as FieldArrayPath<ChainsListConfig>,
   });
 
   return (
@@ -637,7 +652,7 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
   const options = useWatch({
     control,
-    name: `${namePrefix}.options` as const,
+    name: `${namePrefix}.options` as FieldPath<ChainsListConfig>,
   }) as Record<string, any> | undefined;
 
   return (
@@ -648,9 +663,10 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             label="Chain ID"
             fullWidth
             value={
-              (useWatch({ control, name: `${namePrefix}.chainId` as const }) as
-                | string
-                | undefined) ?? ''
+              (useWatch({
+                control,
+                name: `${namePrefix}.chainId` as FieldPath<ChainsListConfig>,
+              }) as string | undefined) ?? ''
             }
             onChange={(e) =>
               setValue(`${namePrefix}.chainId` as any, e.target.value, {
@@ -667,7 +683,7 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             value={
               (useWatch({
                 control,
-                name: `${namePrefix}.duration` as const,
+                name: `${namePrefix}.duration` as FieldPath<ChainsListConfig>,
               }) as number | undefined) ?? 0
             }
             onChange={(e) =>
@@ -685,9 +701,10 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             type="number"
             fullWidth
             value={
-              (useWatch({ control, name: `${namePrefix}.weight` as const }) as
-                | number
-                | undefined) ?? 0
+              (useWatch({
+                control,
+                name: `${namePrefix}.weight` as FieldPath<ChainsListConfig>,
+              }) as number | undefined) ?? 0
             }
             onChange={(e) =>
               setValue(`${namePrefix}.weight` as any, Number(e.target.value), {
@@ -762,7 +779,7 @@ const ChainList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control } = useFormContext<ChainsListConfig>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `${namePrefix}.chainList` as const,
+    name: `${namePrefix}.chainList` as FieldArrayPath<ChainsListConfig>,
   });
 
   return (
@@ -801,11 +818,11 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `${namePrefix}.Conditions` as const,
+    name: `${namePrefix}.Conditions` as FieldArrayPath<ChainsListConfig>,
   });
   const conditions = (useWatch({
     control,
-    name: `${namePrefix}.Conditions` as const,
+    name: `${namePrefix}.Conditions` as FieldPath<ChainsListConfig>,
   }) || []) as Condition[];
 
   return (
@@ -920,7 +937,7 @@ const GroupCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             value={
               (useWatch({
                 control,
-                name: `${namePrefix}.maxSelect` as const,
+                name: `${namePrefix}.maxSelect` as FieldPath<ChainsListConfig>,
               }) as number | undefined) ?? ''
             }
             onChange={(e) =>
@@ -938,9 +955,10 @@ const GroupCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             type="number"
             fullWidth
             value={
-              (useWatch({ control, name: `${namePrefix}.weight` as const }) as
-                | number
-                | undefined) ?? ''
+              (useWatch({
+                control,
+                name: `${namePrefix}.weight` as FieldPath<ChainsListConfig>,
+              }) as number | undefined) ?? ''
             }
             onChange={(e) =>
               setValue(`${namePrefix}.weight` as any, Number(e.target.value), {
