@@ -946,13 +946,21 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                   fullWidth
                   label="Feature"
                   value={featureName || FeatureName.Heroes}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const nextFeatureName = e.target.value as FeatureName;
                     setValue(
                       `${namePrefix}.Conditions.${conditionIndex}.FeatureName` as any,
-                      e.target.value as FeatureName,
+                      nextFeatureName,
                       { shouldDirty: true }
-                    )
-                  }>
+                    );
+                    if (nextFeatureName === FeatureName.Skins) {
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        [],
+                        { shouldDirty: true }
+                      );
+                    }
+                  }}>
                   {Object.values(FeatureName).map((name) => (
                     <MenuItem key={name} value={name}>
                       {name}
@@ -981,19 +989,59 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                 </TextField>
               </Grid>
               <Grid size={{ xs: 12, md: 5 }}>
-                <TextField
-                  label="Value"
-                  fullWidth
-                  helperText="Use comma-separated list for arrays"
-                  value={formatConditionValue(value ?? '')}
-                  onChange={(e) =>
-                    setValue(
-                      `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
-                      parseConditionValue(e.target.value, featureName),
-                      { shouldDirty: true }
-                    )
-                  }
-                />
+                {featureName === FeatureName.Skins ? (
+                  <TextField
+                    select
+                    fullWidth
+                    label="Skins"
+                    SelectProps={{
+                      multiple: true,
+                      renderValue: (selected) =>
+                        Array.isArray(selected)
+                          ? selected.join(', ')
+                          : String(selected),
+                    }}
+                    value={
+                      Array.isArray(value)
+                        ? value
+                            .map(String)
+                            .filter((skinId) => allSkinIds.includes(skinId))
+                        : value
+                        ? [String(value)].filter((skinId) =>
+                            allSkinIds.includes(skinId)
+                          )
+                        : []
+                    }
+                    onChange={(e) =>
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        Array.isArray(e.target.value)
+                          ? e.target.value
+                          : [String(e.target.value)],
+                        { shouldDirty: true }
+                      )
+                    }>
+                    {allSkinIds.map((skinId) => (
+                      <MenuItem key={skinId} value={skinId}>
+                        {skinId}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                ) : (
+                  <TextField
+                    label="Value"
+                    fullWidth
+                    helperText="Use comma-separated list for arrays"
+                    value={formatConditionValue(value ?? '')}
+                    onChange={(e) =>
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        parseConditionValue(e.target.value, featureName),
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                )}
               </Grid>
               <Grid
                 size={{ xs: 12, md: 1 }}
