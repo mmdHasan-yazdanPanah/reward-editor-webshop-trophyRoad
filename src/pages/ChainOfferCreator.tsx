@@ -181,6 +181,12 @@ const parseConditionValue = (
 
 const allSkinIds = Array.from(ALL_SKINS);
 const arenaOptions = Array.from({ length: 13 }, (_, index) => index + 1);
+const moneySkuOptions = [
+  900, 1900, 2400, 2900, 4900, 7400, 9900, 12400, 14900, 19900, 24900, 29900,
+  34900, 39900, 44900, 49900, 54900, 59900, 64900, 69900, 74900, 79900, 84900,
+  89900, 94900, 99900, 124900, 149900, 199900, 249900, 299900, 399900, 499900,
+  699900, 999900, 0,
+];
 
 const getSkinOptionsForHero = (
   heroId?: number,
@@ -315,8 +321,8 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
       {costType === CostTypes.Money && (
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
+            select
             label="Product SKU"
-            type="number"
             fullWidth
             value={(cost as any)?.productSku ?? 0}
             onChange={(e) =>
@@ -325,8 +331,13 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                 Number(e.target.value),
                 { shouldDirty: true }
               )
-            }
-          />
+            }>
+            {moneySkuOptions.map((sku) => (
+              <MenuItem key={sku} value={sku}>
+                {sku.toLocaleString()}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
       )}
     </Grid>
