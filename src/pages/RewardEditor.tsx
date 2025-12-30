@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useForm, useFieldArray, FormProvider } from 'react-hook-form';
 import {
   Container,
@@ -7,6 +7,8 @@ import {
   Button,
   Paper,
   TextField,
+  Stack,
+  Chip,
 } from '@mui/material';
 import Grid from '@mui/material/Grid'; // NOTE: using Grid2 for MUI v6 compatibility
 import UploadIcon from '@mui/icons-material/Upload';
@@ -39,6 +41,10 @@ export const RewardEditor: React.FC = () => {
   });
 
   const formValues = watch();
+  const jsonPreview = useMemo(
+    () => JSON.stringify(formValues, null, 2),
+    [formValues]
+  );
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -98,36 +104,70 @@ export const RewardEditor: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      <Container maxWidth='lg' sx={{ mt: 4 }}>
-        <Paper sx={{ p: 2, mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button variant='contained' component='label' startIcon={<UploadIcon />}>
-            Upload JSON
-            <input type='file' hidden accept='.json' onChange={handleFileUpload} />
-          </Button>
-          <Typography variant='body2' color='textSecondary'>
-            Upload file.
-          </Typography>
+      <Container maxWidth='xl' sx={{ pb: 6 }}>
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ md: 'center' }}
+            justifyContent='space-between'>
+            <Box>
+              <Typography variant='h3' sx={{ mb: 0.5 }}>
+                Reward Data Studio
+              </Typography>
+              <Typography variant='body2' color='textSecondary'>
+                Upload, inspect, and fine-tune reward tables.
+              </Typography>
+            </Box>
+            <Stack direction='row' spacing={1} alignItems='center'>
+              <Chip
+                label={viewMode === 'visual' ? 'Visual Mode' : 'JSON Mode'}
+                color='primary'
+                variant='outlined'
+              />
+              <Button
+                variant='contained'
+                component='label'
+                startIcon={<UploadIcon />}>
+                Upload JSON
+                <input type='file' hidden accept='.json' onChange={handleFileUpload} />
+              </Button>
+              <Button
+                variant='outlined'
+                onClick={handleExport}
+                startIcon={<DownloadIcon />}>
+                Export
+              </Button>
+            </Stack>
+          </Stack>
         </Paper>
 
-        <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Paper
+          sx={{
+            p: 2,
+            mb: 3,
+            display: 'flex',
+            gap: 1.5,
+            flexWrap: 'wrap',
+          }}>
           <Button
-            variant='outlined'
+            variant={viewMode === 'json' ? 'contained' : 'outlined'}
             onClick={() => setViewMode('json')}
             startIcon={<CodeIcon />}>
             JSON
           </Button>
           <Button
-            variant='outlined'
+            variant={viewMode === 'visual' ? 'contained' : 'outlined'}
             onClick={() => setViewMode('visual')}
             startIcon={<ViewListIcon />}>
             Visual
           </Button>
-          <Button
-            variant='contained'
-            onClick={handleExport}
-            startIcon={<DownloadIcon />}>
-            Export
-          </Button>
+          <Typography
+            variant='body2'
+            color='textSecondary'
+            sx={{ alignSelf: 'center', ml: 'auto' }}>
+            Tip: Switch to JSON for bulk edits.
+          </Typography>
         </Paper>
 
         {jsonError && (
@@ -142,7 +182,7 @@ export const RewardEditor: React.FC = () => {
             multiline
             minRows={20}
             variant='outlined'
-            value={JSON.stringify(formValues, null, 2)}
+            value={jsonPreview}
             onChange={(e) => tryParse(e.target.value)}
             sx={{ bgcolor: 'white', fontFamily: 'monospace' }}
           />
@@ -166,9 +206,22 @@ export const RewardEditor: React.FC = () => {
               </Grid>
             </Paper>
 
-            <Typography variant='h6' gutterBottom>
-              Reward Items ({fields.length})
-            </Typography>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={2}
+              alignItems={{ md: 'center' }}
+              justifyContent='space-between'
+              sx={{ mb: 2 }}>
+              <Typography variant='h6'>
+                Reward Items ({fields.length})
+              </Typography>
+              <Button
+                variant='contained'
+                startIcon={<AddIcon />}
+                onClick={handleAddNew}>
+                Add Item
+              </Button>
+            </Stack>
 
             {fields.map((field, index) => (
               <RewardCard
@@ -181,10 +234,6 @@ export const RewardEditor: React.FC = () => {
             {fields.length === 0 && (
               <Typography sx={{ mb: 2 }}>No items.</Typography>
             )}
-
-            <Button variant='contained' startIcon={<AddIcon />} onClick={handleAddNew}>
-              Add Item
-            </Button>
           </Box>
         )}
       </Container>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -12,6 +12,8 @@ import {
   FormControlLabel,
   Divider,
   Alert,
+  Stack,
+  Chip,
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import UploadIcon from '@mui/icons-material/Upload';
@@ -806,7 +808,10 @@ const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   );
 };
 
-const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
+  namePrefix,
+  index,
+}) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
   const options = useWatch({
     control,
@@ -825,6 +830,14 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
+      {index !== undefined && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h6">Chain {index + 1}</Typography>
+          <Typography variant="body2" color="textSecondary">
+            Configure timing, weights, and featured hero/skin.
+          </Typography>
+        </Box>
+      )}
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -975,7 +988,10 @@ const ChainList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         <Box key={field.id} sx={{ mb: 2 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid size={{ xs: 12, md: 11 }}>
-              <ChainCard namePrefix={`${namePrefix}.chainList.${chainIndex}`} />
+              <ChainCard
+                namePrefix={`${namePrefix}.chainList.${chainIndex}`}
+                index={chainIndex}
+              />
             </Grid>
             <Grid
               size={{ xs: 12, md: 1 }}
@@ -1155,11 +1171,22 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   );
 };
 
-const GroupCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
+const GroupCard: React.FC<{ namePrefix: string; index?: number }> = ({
+  namePrefix,
+  index,
+}) => {
   const { control, setValue } = useFormContext<ChainsListConfig>();
 
   return (
     <Paper sx={{ p: 3, mb: 4 }}>
+      {index !== undefined && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="h5">Group {index + 1}</Typography>
+          <Typography variant="body2" color="textSecondary">
+            Define conditions and attach chains for this segment.
+          </Typography>
+        </Box>
+      )}
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -1230,6 +1257,10 @@ export const ChainOfferCreator: React.FC = () => {
   });
 
   const formValues = watch();
+  const jsonPreview = useMemo(
+    () => JSON.stringify(formValues, null, 2),
+    [formValues]
+  );
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1322,80 +1353,94 @@ export const ChainOfferCreator: React.FC = () => {
 
   return (
     <FormProvider {...methods}>
-      <Container maxWidth="xl" sx={{ mt: 4 }}>
-        <Paper
-          sx={{
-            p: 2,
-            mb: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            flexWrap: 'wrap',
-          }}>
-          <Button
-            variant="contained"
-            component="label"
-            startIcon={<UploadIcon />}>
-            Upload JSON
-            <input
-              type="file"
-              hidden
-              accept=".json"
-              onChange={handleFileUpload}
-            />
-          </Button>
-          <Typography variant="body2" color="textSecondary">
-            ChainOffer config JSON.
-          </Typography>
+      <Container maxWidth="xl" sx={{ pb: 6 }}>
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ md: 'center' }}
+            justifyContent="space-between">
+            <Box>
+              <Typography variant="h3" sx={{ mb: 0.5 }}>
+                Chain Offer Command Center
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                Assemble step-by-step offers with visual controls.
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Chip
+                label={viewMode === 'visual' ? 'Visual Mode' : 'JSON Mode'}
+                color="primary"
+                variant="outlined"
+              />
+              <Button
+                variant="contained"
+                component="label"
+                startIcon={<UploadIcon />}>
+                Upload JSON
+                <input
+                  type="file"
+                  hidden
+                  accept=".json"
+                  onChange={handleFileUpload}
+                />
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={handleExport}
+                startIcon={<DownloadIcon />}>
+                Export
+              </Button>
+            </Stack>
+          </Stack>
         </Paper>
 
-        <Paper sx={{ p: 2, mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+        <Paper sx={{ p: 2, mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
           <Button
-            variant="outlined"
+            variant={viewMode === 'json' ? 'contained' : 'outlined'}
             onClick={() => setViewMode('json')}
             startIcon={<CodeIcon />}>
             JSON
           </Button>
           <Button
-            variant="outlined"
+            variant={viewMode === 'visual' ? 'contained' : 'outlined'}
             onClick={() => setViewMode('visual')}
             startIcon={<ViewListIcon />}>
             Visual
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleExport}
-            startIcon={<DownloadIcon />}>
-            Export
-          </Button>
+          <Typography
+            variant="body2"
+            color="textSecondary"
+            sx={{ alignSelf: 'center', ml: 'auto' }}>
+            Tip: Drag steps to reorder.
+          </Typography>
         </Paper>
 
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                label={getHeroLabel(heroSwapValue, 'Change by Hero')}
-                type="number"
-                fullWidth
-                value={heroSwapValue}
-                onChange={(e) => setHeroSwapValue(Number(e.target.value))}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <Button
-                variant="contained"
-                startIcon={<SwapHorizIcon />}
-                onClick={handleHeroSwap}>
-                Apply Hero Change
-              </Button>
-            </Grid>
-            <Grid size={{ xs: 12, md: 5 }}>
-              <Alert severity="info">
-                Updates hero conditions, offer rewards with heroId, and
-                featuringHeroId options.
-              </Alert>
-            </Grid>
-          </Grid>
+        <Paper sx={{ p: 2.5, mb: 3 }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            alignItems={{ md: 'center' }}
+            justifyContent="space-between">
+            <TextField
+              label={getHeroLabel(heroSwapValue, 'Change by Hero')}
+              type="number"
+              sx={{ minWidth: { xs: '100%', md: 260 } }}
+              value={heroSwapValue}
+              onChange={(e) => setHeroSwapValue(Number(e.target.value))}
+            />
+            <Button
+              variant="contained"
+              startIcon={<SwapHorizIcon />}
+              onClick={handleHeroSwap}>
+              Apply Hero Change
+            </Button>
+            <Alert severity="info" sx={{ flex: 1 }}>
+              Updates hero conditions, offer rewards with heroId, and
+              featuringHeroId options.
+            </Alert>
+          </Stack>
         </Paper>
 
         {jsonError && (
@@ -1410,7 +1455,7 @@ export const ChainOfferCreator: React.FC = () => {
             multiline
             minRows={20}
             variant="outlined"
-            value={JSON.stringify(formValues, null, 2)}
+            value={jsonPreview}
             onChange={(e) => tryParse(e.target.value)}
             sx={{ bgcolor: 'white', fontFamily: 'monospace' }}
           />
@@ -1426,6 +1471,7 @@ export const ChainOfferCreator: React.FC = () => {
                   <Grid size={{ xs: 12, md: 11 }}>
                     <GroupCard
                       namePrefix={`chainsAndConditions.${groupIndex}`}
+                      index={groupIndex}
                     />
                   </Grid>
                   <Grid

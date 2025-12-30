@@ -21,7 +21,7 @@ interface Props {
   onRemove: () => void;
 }
 
-export const RewardCard: React.FC<Props> = ({ index, onRemove }) => {
+const RewardCardComponent: React.FC<Props> = ({ index, onRemove }) => {
   const { control } = useFormContext();
 
   const itemData = useWatch({
@@ -241,3 +241,6 @@ export const RewardCard: React.FC<Props> = ({ index, onRemove }) => {
     </Card>
   );
 };
+
+export const RewardCard = React.memo(RewardCardComponent);
+RewardCard.displayName = 'RewardCard';
