@@ -21,6 +21,9 @@ import ViewListIcon from '@mui/icons-material/ViewList';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import dayjs from 'dayjs';
+import duration from 'dayjs/plugin/duration';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import {
   FormProvider,
   type FieldArrayPath,
@@ -50,6 +53,9 @@ import {
   FeatureName,
   Relation,
 } from '../types/chainOfferModels';
+
+dayjs.extend(duration);
+dayjs.extend(relativeTime);
 
 const numericFeatureNames = new Set([
   FeatureName.TotalPaid,
@@ -160,6 +166,48 @@ const getSkinOptionsForHero = (
   }
 
   return filteredOptions;
+};
+
+type DurationUnit = 'second' | 'minute' | 'hour' | 'day';
+
+const durationUnits: Array<{ label: string; value: DurationUnit }> = [
+  { label: 'Seconds', value: 'second' },
+  { label: 'Minutes', value: 'minute' },
+  { label: 'Hours', value: 'hour' },
+  { label: 'Days', value: 'day' },
+];
+
+const durationUnitMs: Record<DurationUnit, number> = {
+  second: 1000,
+  minute: 60 * 1000,
+  hour: 60 * 60 * 1000,
+  day: 24 * 60 * 60 * 1000,
+};
+
+const getDefaultDurationUnit = (durationMs: number): DurationUnit => {
+  if (durationMs >= durationUnitMs.day && durationMs % durationUnitMs.day === 0)
+    return 'day';
+  if (
+    durationMs >= durationUnitMs.hour &&
+    durationMs % durationUnitMs.hour === 0
+  )
+    return 'hour';
+  if (
+    durationMs >= durationUnitMs.minute &&
+    durationMs % durationUnitMs.minute === 0
+  )
+    return 'minute';
+  return 'second';
+};
+
+const formatDurationAmount = (
+  durationMs: number,
+  unit: DurationUnit
+): string => {
+  const raw = durationMs / durationUnitMs[unit];
+  if (!Number.isFinite(raw)) return '0';
+  const rounded = Math.round(raw * 100) / 100;
+  return String(rounded);
 };
 
 const createEmptyCost = (costType: CostTypes): CostConfig => {
@@ -681,6 +729,16 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
     control,
     name: `${namePrefix}.options` as FieldPath<ChainsListConfig>,
   }) as Record<string, any> | undefined;
+  const durationValue =
+    (useWatch({
+      control,
+      name: `${namePrefix}.duration` as FieldPath<ChainsListConfig>,
+    }) as number | undefined) ?? 0;
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>(() =>
+    getDefaultDurationUnit(durationValue)
+  );
+  const durationAmount = formatDurationAmount(durationValue, durationUnit);
+  const durationLabel = dayjs.duration(durationValue).humanize();
 
   return (
     <Paper sx={{ p: 3, mb: 3 }}>
@@ -704,23 +762,38 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
-            label="Duration (ms)"
+            label="Duration"
             type="number"
             fullWidth
-            value={
-              (useWatch({
-                control,
-                name: `${namePrefix}.duration` as FieldPath<ChainsListConfig>,
-              }) as number | undefined) ?? 0
-            }
+            value={durationAmount}
+            inputProps={{ min: 0, step: 'any' }}
+            helperText={`Stored: ${durationValue} ms • ${durationLabel}`}
             onChange={(e) =>
               setValue(
                 `${namePrefix}.duration` as any,
-                Number(e.target.value),
+                Math.round(
+                  (Number(e.target.value) || 0) * durationUnitMs[durationUnit]
+                ),
                 { shouldDirty: true }
               )
             }
           />
+        </Grid>
+        <Grid size={{ xs: 12, md: 2 }}>
+          <TextField
+            select
+            fullWidth
+            label="Unit"
+            value={durationUnit}
+            onChange={(e) =>
+              setDurationUnit(e.target.value as DurationUnit)
+            }>
+            {durationUnits.map((unit) => (
+              <MenuItem key={unit.value} value={unit.value}>
+                {unit.label}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
@@ -1212,7 +1285,7 @@ export const ChainOfferCreator: React.FC = () => {
           />
         ) : (
           <Box>
-            <Typography variant="h6" gutterBottom>
+            <Typography color='primary' variant="h6" gutterBottom>
               Chain Groups ({fields.length})
             </Typography>
 
