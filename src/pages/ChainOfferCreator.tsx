@@ -133,7 +133,8 @@ const parseConditionValue = (
   const allowPartial = options?.allowPartial ?? true;
   const hasTrailingComma = /,\s*$/.test(input);
   const relation = options?.relation;
-  const isArrayRelation = relation === Relation.inc || relation === Relation.exc;
+  const isArrayRelation =
+    relation === Relation.inc || relation === Relation.exc;
   const isNumericRelation =
     relation === Relation.gt ||
     relation === Relation.gte ||
@@ -180,7 +181,7 @@ const parseConditionValue = (
 };
 
 const allSkinIds = Array.from(ALL_SKINS);
-const arenaOptions = Array.from({ length: 13 }, (_, index) => index + 1);
+const arenaOptions = Array.from({ length: 13 }, (_, index) => index);
 const moneySkuOptions = [
   900, 1900, 2400, 2900, 4900, 7400, 9900, 12400, 14900, 19900, 24900, 29900,
   34900, 39900, 44900, 49900, 54900, 59900, 64900, 69900, 74900, 79900, 84900,
@@ -192,8 +193,7 @@ const getSkinOptionsForHero = (
   heroId?: number,
   selectedSkinId?: string
 ): string[] => {
-  const heroSkins =
-    heroId !== undefined ? SKINS_BY_HERO[heroId] : undefined;
+  const heroSkins = heroId !== undefined ? SKINS_BY_HERO[heroId] : undefined;
   const baseOptions =
     heroSkins && heroSkins.length > 0 ? heroSkins : allSkinIds;
   const filteredOptions = baseOptions.filter(
@@ -272,9 +272,7 @@ const CostEditor: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const cost = useWatch({
     control,
     name: namePrefix as FieldPath<ChainsListConfig>,
-  }) as
-    | CostConfig
-    | undefined;
+  }) as CostConfig | undefined;
   const costType = cost?.costType || CostTypes.Free;
 
   const handleCostTypeChange = (nextType: CostTypes) => {
@@ -349,9 +347,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
   const reward = useWatch({
     control,
     name: namePrefix as FieldPath<ChainsListConfig>,
-  }) as
-    | ChainOfferRewardItem
-    | undefined;
+  }) as ChainOfferRewardItem | undefined;
   const rewardType = reward?.rewardType;
   const showAmount =
     rewardType !== RewardType.Chest &&
@@ -446,11 +442,11 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
       {rewardType === RewardType.NewHero && (
         <Grid size={{ xs: 12, md: 4 }}>
-            <TextField
-              label={getHeroLabel(reward?.heroId)}
-              type="number"
-              fullWidth
-              value={reward?.heroId ?? 0}
+          <TextField
+            label={getHeroLabel(reward?.heroId)}
+            type="number"
+            fullWidth
+            value={reward?.heroId ?? 0}
             onChange={(e) =>
               setValue(`${namePrefix}.heroId` as any, Number(e.target.value), {
                 shouldDirty: true,
@@ -653,9 +649,7 @@ const OfferCard: React.FC<{
   const offer = useWatch({
     control,
     name: namePrefix as FieldPath<ChainsListConfig>,
-  }) as
-    | ChainOfferItem
-    | undefined;
+  }) as ChainOfferItem | undefined;
   const hasLocalizedCost = Boolean(offer?.cost_IR || offer?.cost_EU);
 
   const handleToggleCostMode = (useLocalized: boolean) => {
@@ -769,10 +763,7 @@ const SortableOffer: React.FC<{
             }}>
             <Typography variant="subtitle1">Step {index + 1}</Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
-              <IconButton
-                aria-label="Drag step"
-                {...attributes}
-                {...listeners}>
+              <IconButton aria-label="Drag step" {...attributes} {...listeners}>
                 <DragIndicatorIcon />
               </IconButton>
               <IconButton color="error" onClick={onRemove}>
@@ -830,7 +821,9 @@ const ChainOffersList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => insert(offerIndex + 1, createDefaultOffer())}>
+                    onClick={() =>
+                      insert(offerIndex + 1, createDefaultOffer())
+                    }>
                     Add Step Here
                   </Button>
                 </Box>
@@ -923,9 +916,7 @@ const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
             fullWidth
             label="Unit"
             value={durationUnit}
-            onChange={(e) =>
-              setDurationUnit(e.target.value as DurationUnit)
-            }>
+            onChange={(e) => setDurationUnit(e.target.value as DurationUnit)}>
             {durationUnits.map((unit) => (
               <MenuItem key={unit.value} value={unit.value}>
                 {unit.label}
@@ -1088,14 +1079,18 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
             : ''
           : typeof value === 'number'
           ? value
-          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          : typeof value === 'string' &&
+            value !== '' &&
+            !Number.isNaN(Number(value))
           ? Number(value)
           : '';
         const heroMultiValue = Array.isArray(value)
           ? value.map(Number).filter((val) => !Number.isNaN(val))
           : typeof value === 'number'
           ? [value]
-          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          : typeof value === 'string' &&
+            value !== '' &&
+            !Number.isNaN(Number(value))
           ? [Number(value)]
           : [];
         const arenaValue = typeof value === 'number' ? value : '';
@@ -1103,7 +1098,9 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           ? value.map(Number).filter((val) => !Number.isNaN(val))
           : typeof value === 'number'
           ? [value]
-          : typeof value === 'string' && value !== '' && !Number.isNaN(Number(value))
+          : typeof value === 'string' &&
+            value !== '' &&
+            !Number.isNaN(Number(value))
           ? [Number(value)]
           : [];
 
@@ -1130,6 +1127,18 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                         { shouldDirty: true }
                       );
                     }
+                    if (nextFeatureName === FeatureName.Arena) {
+                      const nextValue =
+                        relationValue === Relation.inc ||
+                        relationValue === Relation.exc
+                          ? []
+                          : '';
+                      setValue(
+                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                        nextValue,
+                        { shouldDirty: true }
+                      );
+                    }
                   }}>
                   {Object.values(FeatureName).map((name) => (
                     <MenuItem key={name} value={name}>
@@ -1144,26 +1153,24 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                   fullWidth
                   label="Relation"
                   value={relationValue}
-                  onChange={(e) =>
-                    {
-                      const nextRelation = e.target.value as Relation;
-                      setValue(
-                        `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
-                        nextRelation,
-                        { shouldDirty: true }
-                      );
-                      const normalized = parseConditionValue(
-                        formatConditionValue(value ?? ''),
-                        featureName,
-                        { allowPartial: false, relation: nextRelation }
-                      );
-                      setValue(
-                        `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
-                        normalized,
-                        { shouldDirty: true }
-                      );
-                    }
-                  }>
+                  onChange={(e) => {
+                    const nextRelation = e.target.value as Relation;
+                    setValue(
+                      `${namePrefix}.Conditions.${conditionIndex}.Relation` as any,
+                      nextRelation,
+                      { shouldDirty: true }
+                    );
+                    const normalized = parseConditionValue(
+                      formatConditionValue(value ?? ''),
+                      featureName,
+                      { allowPartial: false, relation: nextRelation }
+                    );
+                    setValue(
+                      `${namePrefix}.Conditions.${conditionIndex}.Value` as any,
+                      normalized,
+                      { shouldDirty: true }
+                    );
+                  }}>
                   {Object.values(Relation).map((relation) => (
                     <MenuItem key={relation} value={relation}>
                       {relation}
@@ -1242,6 +1249,7 @@ const ConditionsList: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
                     select
                     fullWidth
                     label="Arena"
+                    helperText="Arena is indexed (0-12)."
                     SelectProps={{ multiple: isMultiRelation }}
                     value={isMultiRelation ? arenaMultiValue : arenaValue}
                     onChange={(e) =>
@@ -1616,7 +1624,7 @@ export const ChainOfferCreator: React.FC = () => {
           />
         ) : (
           <Box>
-            <Typography color='primary' variant="h6" gutterBottom>
+            <Typography color="primary" variant="h6" gutterBottom>
               Chain Groups ({fields.length})
             </Typography>
 
