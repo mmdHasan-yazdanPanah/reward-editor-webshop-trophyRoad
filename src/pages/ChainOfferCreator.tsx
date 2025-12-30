@@ -57,7 +57,7 @@ import {
   RewardType,
   chestType,
 } from '../types/models';
-import { getHeroLabel, HEROES } from '../types/heroModels';
+import { getHeroLabel, getHeroName, HEROES } from '../types/heroModels';
 import { SKINS_BY_HERO } from '../types/skinModels';
 import {
   type ChainBase,
@@ -188,6 +188,22 @@ const moneySkuOptions = [
   89900, 94900, 99900, 124900, 149900, 199900, 249900, 299900, 399900, 499900,
   699900, 999900, 0,
 ];
+
+const getHeroOptions = (heroId?: number) => {
+  if (
+    heroId === undefined ||
+    heroId === null ||
+    Number.isNaN(heroId) ||
+    HEROES.some((hero) => hero.heroId === heroId)
+  ) {
+    return HEROES;
+  }
+
+  return [
+    { heroId, heroKey: String(heroId), name: getHeroName(heroId) },
+    ...HEROES,
+  ];
+};
 
 const getSkinOptionsForHero = (
   heroId?: number,
@@ -444,15 +460,26 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             label={getHeroLabel(reward?.heroId)}
-            type="number"
+            select
             fullWidth
-            value={reward?.heroId ?? 0}
+            value={reward?.heroId ?? ''}
             onChange={(e) =>
-              setValue(`${namePrefix}.heroId` as any, Number(e.target.value), {
-                shouldDirty: true,
-              })
+              setValue(
+                `${namePrefix}.heroId` as any,
+                e.target.value === '' ? undefined : Number(e.target.value),
+                { shouldDirty: true }
+              )
             }
-          />
+          >
+            <MenuItem value="">
+              <em>Pick hero</em>
+            </MenuItem>
+            {getHeroOptions(reward?.heroId).map((hero) => (
+              <MenuItem key={hero.heroId} value={hero.heroId}>
+                {hero.name}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
       )}
 
@@ -461,17 +488,26 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               label={getHeroLabel(reward?.heroId)}
-              type="number"
+              select
               fullWidth
-              value={reward?.heroId ?? 0}
+              value={reward?.heroId ?? ''}
               onChange={(e) =>
                 setValue(
                   `${namePrefix}.heroId` as any,
-                  Number(e.target.value),
+                  e.target.value === '' ? undefined : Number(e.target.value),
                   { shouldDirty: true }
                 )
               }
-            />
+            >
+              <MenuItem value="">
+                <em>Pick hero</em>
+              </MenuItem>
+              {getHeroOptions(reward?.heroId).map((hero) => (
+                <MenuItem key={hero.heroId} value={hero.heroId}>
+                  {hero.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
@@ -496,17 +532,26 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               label={getHeroLabel(reward?.heroId)}
-              type="number"
+              select
               fullWidth
-              value={reward?.heroId ?? 0}
+              value={reward?.heroId ?? ''}
               onChange={(e) =>
                 setValue(
                   `${namePrefix}.heroId` as any,
-                  Number(e.target.value),
+                  e.target.value === '' ? undefined : Number(e.target.value),
                   { shouldDirty: true }
                 )
               }
-            />
+            >
+              <MenuItem value="">
+                <em>Pick hero</em>
+              </MenuItem>
+              {getHeroOptions(reward?.heroId).map((hero) => (
+                <MenuItem key={hero.heroId} value={hero.heroId}>
+                  {hero.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
@@ -547,17 +592,26 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
               label={getHeroLabel(reward?.heroId)}
-              type="number"
+              select
               fullWidth
-              value={reward?.heroId ?? 0}
+              value={reward?.heroId ?? ''}
               onChange={(e) =>
                 setValue(
                   `${namePrefix}.heroId` as any,
-                  Number(e.target.value),
+                  e.target.value === '' ? undefined : Number(e.target.value),
                   { shouldDirty: true }
                 )
               }
-            />
+            >
+              <MenuItem value="">
+                <em>Pick hero</em>
+              </MenuItem>
+              {getHeroOptions(reward?.heroId).map((hero) => (
+                <MenuItem key={hero.heroId} value={hero.heroId}>
+                  {hero.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <TextField
@@ -946,17 +1000,26 @@ const ChainCard: React.FC<{ namePrefix: string; index?: number }> = ({
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
             label={getHeroLabel(options?.featuringHeroId, 'Featuring Hero')}
-            type="number"
+            select
             fullWidth
-            value={options?.featuringHeroId ?? 0}
+            value={options?.featuringHeroId ?? ''}
             onChange={(e) =>
               setValue(
                 `${namePrefix}.options.featuringHeroId` as any,
-                Number(e.target.value),
+                e.target.value === '' ? undefined : Number(e.target.value),
                 { shouldDirty: true }
               )
             }
-          />
+          >
+            <MenuItem value="">
+              <em>Pick hero</em>
+            </MenuItem>
+            {getHeroOptions(options?.featuringHeroId).map((hero) => (
+              <MenuItem key={hero.heroId} value={hero.heroId}>
+                {hero.name}
+              </MenuItem>
+            ))}
+          </TextField>
         </Grid>
         <Grid size={{ xs: 12, md: 6 }}>
           <TextField
@@ -1401,7 +1464,9 @@ const GroupCard: React.FC<{ namePrefix: string; index?: number }> = ({
 export const ChainOfferCreator: React.FC = () => {
   const [viewMode, setViewMode] = useState<'json' | 'visual'>('visual');
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [heroSwapValue, setHeroSwapValue] = useState<number>(0);
+  const [heroSwapValue, setHeroSwapValue] = useState<number | undefined>(
+    undefined
+  );
 
   const methods = useForm<ChainsListConfig>({
     defaultValues,
@@ -1476,7 +1541,7 @@ export const ChainOfferCreator: React.FC = () => {
   };
 
   const handleHeroSwap = () => {
-    if (!heroSwapValue && heroSwapValue !== 0) return;
+    if (typeof heroSwapValue !== 'number' || Number.isNaN(heroSwapValue)) return;
 
     const data = JSON.parse(JSON.stringify(getValues())) as ChainsListConfig;
     const heroRewardTypes = new Set([
@@ -1588,11 +1653,23 @@ export const ChainOfferCreator: React.FC = () => {
             justifyContent="space-between">
             <TextField
               label={getHeroLabel(heroSwapValue, 'Change by Hero')}
-              type="number"
+              select
               sx={{ minWidth: { xs: '100%', md: 260 } }}
-              value={heroSwapValue}
-              onChange={(e) => setHeroSwapValue(Number(e.target.value))}
-            />
+              value={heroSwapValue ?? ''}
+              onChange={(e) =>
+                setHeroSwapValue(
+                  e.target.value === '' ? undefined : Number(e.target.value)
+                )
+              }>
+              <MenuItem value="">
+                <em>Pick hero</em>
+              </MenuItem>
+              {getHeroOptions(heroSwapValue).map((hero) => (
+                <MenuItem key={hero.heroId} value={hero.heroId}>
+                  {hero.name}
+                </MenuItem>
+              ))}
+            </TextField>
             <Button
               variant="contained"
               startIcon={<SwapHorizIcon />}
