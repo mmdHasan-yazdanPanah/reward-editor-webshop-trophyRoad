@@ -37,6 +37,7 @@ import {
   RewardType,
   chestType,
 } from '../types/models';
+import { getHeroLabel } from '../types/heroModels';
 import { SKINS_BY_HERO } from '../types/skinModels';
 import {
   type ChainBase,
@@ -349,11 +350,11 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
       {rewardType === RewardType.NewHero && (
         <Grid size={{ xs: 12, md: 4 }}>
-          <TextField
-            label="Hero ID"
-            type="number"
-            fullWidth
-            value={reward?.heroId ?? 0}
+            <TextField
+              label={getHeroLabel(reward?.heroId)}
+              type="number"
+              fullWidth
+              value={reward?.heroId ?? 0}
             onChange={(e) =>
               setValue(`${namePrefix}.heroId` as any, Number(e.target.value), {
                 shouldDirty: true,
@@ -367,7 +368,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         <>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
-              label="Hero ID"
+              label={getHeroLabel(reward?.heroId)}
               type="number"
               fullWidth
               value={reward?.heroId ?? 0}
@@ -402,7 +403,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         <>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
-              label="Hero ID"
+              label={getHeroLabel(reward?.heroId)}
               type="number"
               fullWidth
               value={reward?.heroId ?? 0}
@@ -453,7 +454,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
         <>
           <Grid size={{ xs: 12, md: 4 }}>
             <TextField
-              label="Hero ID"
+              label={getHeroLabel(reward?.heroId)}
               type="number"
               fullWidth
               value={reward?.heroId ?? 0}
@@ -742,7 +743,7 @@ const ChainCard: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
 
         <Grid size={{ xs: 12, md: 4 }}>
           <TextField
-            label="Featuring Hero ID"
+            label={getHeroLabel(options?.featuringHeroId, 'Featuring Hero')}
             type="number"
             fullWidth
             value={options?.featuringHeroId ?? 0}
@@ -1169,7 +1170,7 @@ export const ChainOfferCreator: React.FC = () => {
           <Grid container spacing={2} alignItems="center">
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
-                label="Change by Hero"
+                label={getHeroLabel(heroSwapValue, 'Change by Hero')}
                 type="number"
                 fullWidth
                 value={heroSwapValue}

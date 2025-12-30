@@ -13,6 +13,7 @@ import Grid from '@mui/material/Grid'; // NOTE: Using Grid2 for MUI v6
 import DeleteIcon from '@mui/icons-material/Delete';
 import { RewardType, chestType } from '../types/models';
 import type { RewardEntryInput } from '../types/models'; // FIXED: Type-only import
+import { getHeroLabel } from '../types/heroModels';
 import { validateRewardEntry } from '../utils/validator';
 
 interface Props {
@@ -120,7 +121,7 @@ export const RewardCard: React.FC<Props> = ({ index, onRemove }) => {
                   <TextField
                     {...field}
                     fullWidth
-                    label='Hero ID'
+                    label={getHeroLabel(itemData?.reward?.heroId)}
                     type='number'
                     error={heroIdHasError}
                     helperText={
