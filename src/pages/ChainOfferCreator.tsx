@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -92,6 +92,8 @@ const amountExemptRewardTypes = new Set([
 ]);
 
 const MAX_VALIDATION_ERRORS = 20;
+const STORAGE_KEY = 'chainOfferCreator.form';
+const STORAGE_DEBOUNCE_MS = 500;
 
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
@@ -1750,6 +1752,7 @@ export const ChainOfferCreator: React.FC = () => {
   const [heroSwapValue, setHeroSwapValue] = useState<number | undefined>(
     undefined
   );
+  const saveTimeoutRef = useRef<number | null>(null);
 
   const methods = useForm<ChainsListConfig>({
     defaultValues,
@@ -1772,6 +1775,41 @@ export const ChainOfferCreator: React.FC = () => {
     () => validateConfig(formValues),
     [formValues]
   );
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    try {
+      const parsed = normalizeConfig(JSON.parse(saved) as ChainsListConfig);
+      if (parsed && Array.isArray(parsed.chainsAndConditions)) {
+        reset(parsed, { keepDefaultValues: true });
+      }
+    } catch (error) {
+      console.warn('Failed to load saved chain offer form', error);
+    }
+  }, [reset]);
+
+  useEffect(() => {
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = window.setTimeout(() => {
+      try {
+        const normalized = normalizeConfig(getValues());
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      } catch (error) {
+        console.warn('Failed to save chain offer form', error);
+      }
+    }, STORAGE_DEBOUNCE_MS);
+
+    return () => {
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
+  }, [formValues, getValues]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
