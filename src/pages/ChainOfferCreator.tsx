@@ -96,6 +96,54 @@ const MAX_VALIDATION_ERRORS = 20;
 const isFiniteNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value);
 
+const normalizeReward = (
+  reward: ChainOfferRewardItem
+): ChainOfferRewardItem => {
+  if (!reward.rewardType) return reward;
+  const next: ChainOfferRewardItem = { ...reward };
+
+  if (reward.rewardType === RewardType.Chest) {
+    if (!isFiniteNumber(next.amount)) next.amount = 0;
+    if (next.chestType === undefined || next.chestType === null) {
+      next.chestType = chestType.Free;
+    }
+    return next;
+  }
+
+  if (reward.rewardType === RewardType.HeroCard) {
+    if (!isFiniteNumber(next.cardAmount)) next.cardAmount = 0;
+    return next;
+  }
+
+  if (reward.rewardType === RewardType.HeroAbilityCard) {
+    if (!next.ability) next.ability = 'ab1';
+    if (!isFiniteNumber(next.cardAmount)) next.cardAmount = 0;
+    return next;
+  }
+
+  if (!amountExemptRewardTypes.has(reward.rewardType)) {
+    if (!isFiniteNumber(next.amount)) next.amount = 0;
+  }
+
+  return next;
+};
+
+const normalizeConfig = (config: ChainsListConfig): ChainsListConfig => ({
+  ...config,
+  chainsAndConditions: (config.chainsAndConditions || []).map((group) => ({
+    ...group,
+    chainList: (group.chainList || []).map((chain) => ({
+      ...chain,
+      chainOffers: (chain.chainOffers || []).map((offer) => ({
+        ...offer,
+        rewards: (offer.rewards || []).map((reward) =>
+          normalizeReward(reward)
+        ),
+      })),
+    })),
+  })),
+});
+
 const validateCostConfig = (
   cost: CostConfig | undefined,
   label: string,
@@ -578,29 +626,14 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
     rewardType !== RewardType.Skin &&
     rewardType !== undefined;
 
-  useEffect(() => {
-    if (!rewardType) {
-      setValue(`${namePrefix}.rewardType` as any, RewardType.Gem, {
-        shouldDirty: true,
-      });
-    }
-    if (rewardType === RewardType.Chest && reward?.chestType === undefined) {
-      setValue(`${namePrefix}.chestType` as any, chestType.Free, {
-        shouldDirty: true,
-      });
-    }
-    if (rewardType === RewardType.HeroAbilityCard && !reward?.ability) {
-      setValue(`${namePrefix}.ability` as any, 'ab1', {
-        shouldDirty: true,
-      });
-    }
-  }, [
-    namePrefix,
-    reward?.ability,
-    reward?.chestType,
-    rewardType,
-    setValue,
-  ]);
+  const handleRewardTypeChange = (nextType: RewardType) => {
+    const baseReward = reward ? { ...reward } : { rewardType: nextType };
+    const normalized = normalizeReward({
+      ...baseReward,
+      rewardType: nextType,
+    });
+    setValue(namePrefix as any, normalized, { shouldDirty: true });
+  };
 
   return (
     <Grid container spacing={2}>
@@ -611,11 +644,7 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
           label="Reward Type"
           value={rewardType || RewardType.Gem}
           onChange={(e) =>
-            setValue(
-              `${namePrefix}.rewardType` as any,
-              e.target.value as RewardType,
-              { shouldDirty: true }
-            )
+            handleRewardTypeChange(e.target.value as RewardType)
           }>
           {Object.values(RewardType).map((type) => (
             <MenuItem key={type} value={type}>
@@ -1758,7 +1787,7 @@ export const ChainOfferCreator: React.FC = () => {
 
   const tryParse = (text: string) => {
     try {
-      const data = JSON.parse(text) as ChainsListConfig;
+      const data = normalizeConfig(JSON.parse(text) as ChainsListConfig);
       if (data && Array.isArray(data.chainsAndConditions)) {
         reset(data);
         setJsonError(null);
@@ -1776,7 +1805,8 @@ export const ChainOfferCreator: React.FC = () => {
     if (currentErrors.length > 0) {
       return;
     }
-    const data = JSON.parse(JSON.stringify(getValues())) as ChainsListConfig;
+    const normalized = normalizeConfig(getValues());
+    const data = JSON.parse(JSON.stringify(normalized)) as ChainsListConfig;
     data.chainsAndConditions.forEach((group) => {
       group.chainList.forEach((chain) => {
         chain.chainOffers.forEach((offer) => {
