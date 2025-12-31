@@ -83,6 +83,196 @@ const numericFeatureNames = new Set([
   FeatureName.Heroes,
 ]);
 
+const amountExemptRewardTypes = new Set([
+  RewardType.Chest,
+  RewardType.HeroCard,
+  RewardType.HeroAbilityCard,
+  RewardType.NewHero,
+  RewardType.Skin,
+]);
+
+const MAX_VALIDATION_ERRORS = 20;
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value);
+
+const validateCostConfig = (
+  cost: CostConfig | undefined,
+  label: string,
+  errors: string[]
+) => {
+  if (!cost || !cost.costType) {
+    errors.push(`${label}: costType is required.`);
+    return;
+  }
+
+  switch (cost.costType) {
+    case CostTypes.Money:
+      if (!isFiniteNumber((cost as any).productSku)) {
+        errors.push(`${label}: productSku is required for Money costs.`);
+      }
+      break;
+    case CostTypes.Gem:
+    case CostTypes.Gold:
+    case CostTypes.ElPoint:
+      if (!isFiniteNumber((cost as any).amount)) {
+        errors.push(`${label}: amount is required for ${cost.costType} costs.`);
+      }
+      break;
+    case CostTypes.Ad:
+    case CostTypes.Free:
+      break;
+    default:
+      errors.push(`${label}: unsupported costType.`);
+  }
+};
+
+const validateConfig = (config: ChainsListConfig | undefined): string[] => {
+  const errors: string[] = [];
+
+  if (!config || !Array.isArray(config.chainsAndConditions)) {
+    return ['Config is missing chainsAndConditions.'];
+  }
+
+  if (config.chainsAndConditions.length === 0) {
+    errors.push('Config must include at least one chain group.');
+  }
+
+  config.chainsAndConditions.forEach((group, groupIndex) => {
+    const groupLabel = `Group ${groupIndex + 1}`;
+
+    if (!Array.isArray(group.Conditions) || group.Conditions.length === 0) {
+      errors.push(`${groupLabel}: at least one condition is required.`);
+    }
+    if (!Array.isArray(group.chainList) || group.chainList.length === 0) {
+      errors.push(`${groupLabel}: at least one chain is required.`);
+    }
+
+    group.chainList?.forEach((chain, chainIndex) => {
+      const chainLabel = `${groupLabel} > Chain ${chainIndex + 1}`;
+      if (!chain?.chainId) {
+        errors.push(`${chainLabel}: chainId is required.`);
+      }
+      if (!Array.isArray(chain.chainOffers) || chain.chainOffers.length === 0) {
+        errors.push(`${chainLabel}: at least one offer is required.`);
+      }
+
+      chain.chainOffers?.forEach((offer, offerIndex) => {
+        const offerLabel = `${chainLabel} > Offer ${offerIndex + 1}`;
+        const hasCost = Boolean(offer?.cost);
+        const hasCostIR = Boolean(offer?.cost_IR);
+        const hasCostEU = Boolean(offer?.cost_EU);
+
+        if (hasCost && (hasCostIR || hasCostEU)) {
+          errors.push(
+            `${offerLabel}: use cost or cost_IR + cost_EU, not both.`
+          );
+        }
+        if (!hasCost && !(hasCostIR && hasCostEU)) {
+          errors.push(
+            `${offerLabel}: cost is required (cost or cost_IR + cost_EU).`
+          );
+        }
+
+        if (offer?.cost) {
+          validateCostConfig(offer.cost, `${offerLabel} > cost`, errors);
+        }
+        if (offer?.cost_IR) {
+          validateCostConfig(offer.cost_IR, `${offerLabel} > cost_IR`, errors);
+        }
+        if (offer?.cost_EU) {
+          validateCostConfig(offer.cost_EU, `${offerLabel} > cost_EU`, errors);
+        }
+
+        if (!Array.isArray(offer?.rewards) || offer.rewards.length === 0) {
+          errors.push(`${offerLabel}: at least one reward is required.`);
+        }
+
+        offer?.rewards?.forEach((reward, rewardIndex) => {
+          const rewardLabel = `${offerLabel} > Reward ${rewardIndex + 1}`;
+          const rewardType = reward?.rewardType;
+
+          if (!rewardType) {
+            errors.push(`${rewardLabel}: rewardType is required.`);
+            return;
+          }
+
+          if (!amountExemptRewardTypes.has(rewardType)) {
+            if (!isFiniteNumber(reward.amount)) {
+              errors.push(
+                `${rewardLabel}: amount is required for ${rewardType}.`
+              );
+            }
+          }
+
+          if (rewardType === RewardType.Chest) {
+            if (!isFiniteNumber(reward.amount)) {
+              errors.push(`${rewardLabel}: amount is required for Chest.`);
+            }
+            if (reward.chestType === undefined || reward.chestType === null) {
+              errors.push(`${rewardLabel}: chestType is required for Chest.`);
+            }
+          }
+
+          if (rewardType === RewardType.HeroCard) {
+            if (!isFiniteNumber(reward.heroId)) {
+              errors.push(`${rewardLabel}: heroId is required for HeroCard.`);
+            }
+            if (!isFiniteNumber(reward.cardAmount)) {
+              errors.push(
+                `${rewardLabel}: cardAmount is required for HeroCard.`
+              );
+            }
+          }
+
+          if (rewardType === RewardType.HeroAbilityCard) {
+            if (!isFiniteNumber(reward.heroId)) {
+              errors.push(
+                `${rewardLabel}: heroId is required for HeroAbilityCard.`
+              );
+            }
+            if (!reward.ability) {
+              errors.push(
+                `${rewardLabel}: ability is required for HeroAbilityCard.`
+              );
+            }
+            if (!isFiniteNumber(reward.cardAmount)) {
+              errors.push(
+                `${rewardLabel}: cardAmount is required for HeroAbilityCard.`
+              );
+            }
+          }
+
+          if (rewardType === RewardType.NewHero) {
+            if (!isFiniteNumber(reward.heroId)) {
+              errors.push(`${rewardLabel}: heroId is required for NewHero.`);
+            }
+          }
+
+          if (rewardType === RewardType.Skin) {
+            if (!isFiniteNumber(reward.heroId)) {
+              errors.push(`${rewardLabel}: heroId is required for Skin.`);
+            }
+            if (!reward.skinId) {
+              errors.push(`${rewardLabel}: skinId is required for Skin.`);
+            } else if (!ALL_SKINS.has(reward.skinId)) {
+              errors.push(
+                `${rewardLabel}: skinId '${reward.skinId}' is not recognized.`
+              );
+            } else if (EXCLUSIVE_SKINS.has(reward.skinId)) {
+              errors.push(
+                `${rewardLabel}: skinId '${reward.skinId}' is exclusive and not allowed.`
+              );
+            }
+          }
+        });
+      });
+    });
+  });
+
+  return errors;
+};
+
 const createDefaultReward = (): ChainOfferRewardItem => ({
   rewardType: RewardType.Gem,
   amount: 10,
@@ -1549,6 +1739,10 @@ export const ChainOfferCreator: React.FC = () => {
     () => JSON.stringify(formValues, null, 2),
     [formValues]
   );
+  const validationErrors = useMemo(
+    () => validateConfig(formValues),
+    [formValues]
+  );
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1578,6 +1772,10 @@ export const ChainOfferCreator: React.FC = () => {
   };
 
   const handleExport = () => {
+    const currentErrors = validateConfig(getValues());
+    if (currentErrors.length > 0) {
+      return;
+    }
     const data = JSON.parse(JSON.stringify(getValues())) as ChainsListConfig;
     data.chainsAndConditions.forEach((group) => {
       group.chainList.forEach((chain) => {
@@ -1681,6 +1879,7 @@ export const ChainOfferCreator: React.FC = () => {
               <Button
                 variant="outlined"
                 onClick={handleExport}
+                disabled={validationErrors.length > 0}
                 startIcon={<DownloadIcon />}>
                 Export
               </Button>
@@ -1751,6 +1950,28 @@ export const ChainOfferCreator: React.FC = () => {
           <Paper sx={{ p: 2, mb: 2, bgcolor: '#ffebee', color: '#c62828' }}>
             <Typography>{jsonError}</Typography>
           </Paper>
+        )}
+
+        {validationErrors.length > 0 && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            <Typography variant="subtitle2">
+              Validation errors ({validationErrors.length})
+            </Typography>
+            <Box component="ul" sx={{ pl: 3, mb: 0 }}>
+              {validationErrors
+                .slice(0, MAX_VALIDATION_ERRORS)
+                .map((error, index) => (
+                  <li key={index}>
+                    <Typography variant="body2">{error}</Typography>
+                  </li>
+                ))}
+            </Box>
+            {validationErrors.length > MAX_VALIDATION_ERRORS && (
+              <Typography variant="body2">
+                ...and {validationErrors.length - MAX_VALIDATION_ERRORS} more.
+              </Typography>
+            )}
+          </Alert>
         )}
 
         {viewMode === 'json' ? (
