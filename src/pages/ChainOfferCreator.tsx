@@ -130,6 +130,23 @@ const normalizeReward = (
   return next;
 };
 
+const createRewardForType = (rewardType: RewardType): ChainOfferRewardItem => {
+  switch (rewardType) {
+    case RewardType.Chest:
+      return { rewardType, amount: 0, chestType: chestType.Free };
+    case RewardType.HeroCard:
+      return { rewardType, cardAmount: 0 };
+    case RewardType.HeroAbilityCard:
+      return { rewardType, ability: 'ab1', cardAmount: 0 };
+    case RewardType.NewHero:
+      return { rewardType };
+    case RewardType.Skin:
+      return { rewardType };
+    default:
+      return { rewardType, amount: 0 };
+  }
+};
+
 const normalizeConfig = (config: ChainsListConfig): ChainsListConfig => ({
   ...config,
   chainsAndConditions: (config.chainsAndConditions || []).map((group) => ({
@@ -629,12 +646,8 @@ const RewardFields: React.FC<{ namePrefix: string }> = ({ namePrefix }) => {
     rewardType !== undefined;
 
   const handleRewardTypeChange = (nextType: RewardType) => {
-    const baseReward = reward ? { ...reward } : { rewardType: nextType };
-    const normalized = normalizeReward({
-      ...baseReward,
-      rewardType: nextType,
-    });
-    setValue(namePrefix as any, normalized, { shouldDirty: true });
+    const nextReward = createRewardForType(nextType);
+    setValue(namePrefix as any, nextReward, { shouldDirty: true });
   };
 
   return (
